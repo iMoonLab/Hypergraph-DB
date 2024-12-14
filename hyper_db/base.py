@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 from dataclasses import dataclass
 
 
@@ -145,5 +145,30 @@ class BaseHypergraphDB:
 
         Args:
             ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+        """
+        raise NotImplementedError
+
+    def draw(self, ):
+        r"""
+        Draw the hypergraph.
+        """
+        raise NotImplementedError
+    
+    def sub(self, v_name_list: List[str]):
+        r"""
+        Return the sub-hypergraph.
+
+        Args:
+            ``v_name_list`` (``List[str]``): The list of vertex names.
+        """
+        raise NotImplementedError
+    
+    def sub_from_v(self, v_name: str, depth: int):
+        r"""
+        Return the sub-hypergraph from the vertex.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+            ``depth`` (``int``): The depth of the sub-hypergraph.
         """
         raise NotImplementedError
