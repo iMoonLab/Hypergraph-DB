@@ -1,60 +1,149 @@
-from dataclasses import dataclass, field
-from typing import Union
-import numpy as np
+from pathlib import Path
+from typing import Union, Tuple
+from dataclasses import dataclass
 
 
 @dataclass
-class StorageNameSpace:
-    namespace: str
-    global_config: dict
+class BaseHypergraphDB:
+    r"""
+    Base class for hypergraph database.
+    """
 
-    async def index_done_callback(self):
-        """commit the storage operations after indexing"""
-        pass
+    storage_file: Union[str, Path] = "hyper_db.xml"
 
-    async def query_done_callback(self):
-        """commit the storage operations after querying"""
-        pass
+    def v(self, v_name: str) -> dict:
+        r"""
+        Return the vertex data.
 
-
-@dataclass
-class BaseGraphStorage(StorageNameSpace):
-
-    async def has_node(self, node_id: str) -> bool:
+        Args:
+            ``v_name`` (``str``): The vertex name.
+        """
         raise NotImplementedError
 
-    async def has_edge(self, source_node_id: str, target_node_id: str) -> bool:
+    def e(self, e_tuple: Tuple) -> dict:
+        r"""
+        Return the hyperedge data.
+
+        Args:
+            ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+        """
         raise NotImplementedError
 
-    async def node_degree(self, node_id: str) -> int:
+    def add_v(self, v_name: str, v_data: dict):
+        r"""
+        Add a vertex to the hypergraph.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+            ``v_data`` (``dict``): The vertex data.
+        """
         raise NotImplementedError
 
-    async def edge_degree(self, src_id: str, tgt_id: str) -> int:
+    def add_e(self, e_tuple: Tuple, e_data: dict):
+        r"""
+        Add a hyperedge to the hypergraph.
+
+        Args:
+            ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+            ``e_data`` (``dict``): The hyperedge data.
+        """
         raise NotImplementedError
 
-    async def get_node(self, node_id: str) -> Union[dict, None]:
+    def remove_v(self, v_name: str):
+        r"""
+        Remove a vertex from the hypergraph.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+        """
         raise NotImplementedError
 
-    async def get_edge(
-        self, source_node_id: str, target_node_id: str
-    ) -> Union[dict, None]:
+    def remove_e(self, e_tuple: Tuple):
+        r"""
+        Remove a hyperedge from the hypergraph.
+
+        Args:
+            ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+        """
         raise NotImplementedError
 
-    async def get_node_edges(
-        self, source_node_id: str
-    ) -> Union[list[tuple[str, str]], None]:
+    def update_v(self, v_name: str):
+        r"""
+        Update the vertex data.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+        """
         raise NotImplementedError
 
-    async def upsert_node(self, node_id: str, node_data: dict[str, str]):
+    def update_e(self, e_tuple: Tuple):
+        r"""
+        Update the hyperedge data.
+
+        Args:
+            ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+        """
         raise NotImplementedError
 
-    async def upsert_edge(
-        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
-    ):
+    def has_v(self, v_name: str) -> bool:
+        r"""
+        Return True if the vertex exists in the hypergraph.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+        """
         raise NotImplementedError
 
-    async def delete_node(self, node_id: str):
+    def has_e(self, e_tuple: Tuple) -> bool:
+        r"""
+        Return True if the hyperedge exists in the hypergraph.
+
+        Args:
+            ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+        """
         raise NotImplementedError
 
-    async def embed_nodes(self, algorithm: str) -> tuple[np.ndarray, list[str]]:
-        raise NotImplementedError("Node embedding is not used in lightrag.")
+    def degree_v(self, v_name: str) -> int:
+        r"""
+        Return the degree of the vertex.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+        """
+        raise NotImplementedError
+
+    def degree_e(self, e_tuple: Tuple) -> int:
+        r"""
+        Return the degree of the hyperedge.
+
+        Args:
+            ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+        """
+        raise NotImplementedError
+
+    def nbr_v(self, v_name: str) -> list:
+        r"""
+        Return the vertex neighbors of the vertex.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+        """
+        raise NotImplementedError
+
+    def nbr_e_of_v(self, v_name: str) -> list:
+        r"""
+        Return the hyperedge neighbors of the vertex.
+
+        Args:
+            ``v_name`` (``str``): The vertex name.
+        """
+        raise NotImplementedError
+
+    def nbr_v_of_e(self, e_tuple: Tuple) -> list:
+        r"""
+        Return the vertex neighbors of the hyperedge.
+
+        Args:
+            ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
+        """
+        raise NotImplementedError
