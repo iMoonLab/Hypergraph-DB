@@ -4,9 +4,9 @@ Hyper-DB
 Hypergraph DataBase
 ---------------------
 
-.. autoclass:: hyper_db.BaseHypergraphDB
+.. autoclass:: hyperdb.BaseHypergraphDB
     :members:
 
 
-.. autoclass:: hyper_db.HypergraphDB
+.. autoclass:: hyperdb.HypergraphDB
     :members:

@@ -22,5 +22,5 @@ documentation for details.
    :caption: API Reference
    :hidden:
 
-   hyper_db <api/hyper_db>
+   hyperdb <api/hyperdb>
 
