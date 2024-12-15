@@ -17,11 +17,11 @@
 
   <img alt="License" src="https://img.shields.io/github/license/iMoonLab/Hyper-DB?color=56BEB8">
 
-  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/{{YOUR_GITHUB_USERNAME}}/Hyper-DB?color=56BEB8" /> -->
+  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/iMoonLab/Hyper-DB?color=56BEB8" /> -->
 
-  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/{{YOUR_GITHUB_USERNAME}}/Hyper-DB?color=56BEB8" /> -->
+  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/iMoonLab/Hyper-DB?color=56BEB8" /> -->
 
-  <!-- <img alt="Github stars" src="https://img.shields.io/github/stars/{{YOUR_GITHUB_USERNAME}}/Hyper-DB?color=56BEB8" /> -->
+  <img alt="Github stars" src="https://img.shields.io/github/stars/iMoonLab/Hyper-DB?color=56BEB8" />
 </p>
 
 <!-- Status -->
