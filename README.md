@@ -9,19 +9,19 @@
 <h1 align="center">Hyper-DB</h1>
 
 <p align="center">
-  <img alt="Github top language" src="https://img.shields.io/github/languages/top/iMoonLab/hyper-db?color=56BEB8">
+  <img alt="Github top language" src="https://img.shields.io/github/languages/top/iMoonLab/Hyper-DB?color=56BEB8">
 
-  <img alt="Github language count" src="https://img.shields.io/github/languages/count/iMoonLab/hyper-db?color=56BEB8">
+  <img alt="Github language count" src="https://img.shields.io/github/languages/count/iMoonLab/Hyper-DB?color=56BEB8">
 
-  <img alt="Repository size" src="https://img.shields.io/github/repo-size/iMoonLab/hyper-db?color=56BEB8">
+  <img alt="Repository size" src="https://img.shields.io/github/repo-size/iMoonLab/Hyper-DB?color=56BEB8">
 
-  <img alt="License" src="https://img.shields.io/github/license/iMoonLab/hyper-db?color=56BEB8">
+  <img alt="License" src="https://img.shields.io/github/license/iMoonLab/Hyper-DB?color=56BEB8">
 
-  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/{{YOUR_GITHUB_USERNAME}}/hyper-db?color=56BEB8" /> -->
+  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/{{YOUR_GITHUB_USERNAME}}/Hyper-DB?color=56BEB8" /> -->
 
-  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/{{YOUR_GITHUB_USERNAME}}/hyper-db?color=56BEB8" /> -->
+  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/{{YOUR_GITHUB_USERNAME}}/Hyper-DB?color=56BEB8" /> -->
 
-  <!-- <img alt="Github stars" src="https://img.shields.io/github/stars/{{YOUR_GITHUB_USERNAME}}/hyper-db?color=56BEB8" /> -->
+  <!-- <img alt="Github stars" src="https://img.shields.io/github/stars/{{YOUR_GITHUB_USERNAME}}/Hyper-DB?color=56BEB8" /> -->
 </p>
 
 <!-- Status -->
@@ -87,8 +87,8 @@ You can also install it by cloning the repository or adding it to your project m
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-repo/hyper-db.git
-cd hyper-db
+git clone https://github.com/iMoonLab/Hyper-DB.git
+cd Hyper-DB
 
 # Install dependencies (if any)
 pip install -r requirements.txt
