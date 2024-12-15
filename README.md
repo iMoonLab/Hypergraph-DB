@@ -1,5 +1,5 @@
 <div align="center" id="top"> 
-  <img src="docs/_static/log.svg" alt="Hyper DB" />
+  <img src="docs/_static/logo.svg" alt="Hyper DB"  width="30%" height="50%" />
 
   &#xa0;
 
