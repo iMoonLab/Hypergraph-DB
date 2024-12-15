@@ -1,11 +1,11 @@
-import json
+import pickle as pkl
 from pathlib import Path
 from copy import deepcopy
 from collections import defaultdict
 from collections.abc import Hashable
 from functools import cached_property
 from dataclasses import dataclass, field
-from typing import Tuple, List, Any, Union, Set, Dict
+from typing import Tuple, List, Any, Union, Set, Dict, Optional
 
 
 from hyperdb.base import BaseHypergraphDB
@@ -33,14 +33,14 @@ class HypergraphDB(BaseHypergraphDB):
         Load the hypergraph database from the storage file.
         """
         try:
-            with open(storage_file, "r") as f:
-                data = json.load(f)
+            with open(storage_file, "rb") as f:
+                data = pkl.load(f)
             self._v_data = data.get("v_data", {})
             self._v_inci = data.get("v_inci", {})
             self._e_data = data.get("e_data", {})
-            return "Error"
+            return True
         except Exception as e:
-            return "Done"
+            return False
 
     def save(self, storage_file: Path) -> dict:
         r"""
@@ -52,11 +52,11 @@ class HypergraphDB(BaseHypergraphDB):
             "e_data": self._e_data,
         }
         try:
-            with open(storage_file, "w") as f:
-                json.dump(data, f)
-            return "Done"
+            with open(storage_file, "wb") as f:
+                pkl.dump(data, f)
+            return True
         except Exception as e:
-            return "Error"
+            return False
 
     def _clear_cache(self):
         r"""
@@ -64,6 +64,8 @@ class HypergraphDB(BaseHypergraphDB):
         """
         self.__dict__.pop("all_v", None)
         self.__dict__.pop("all_e", None)
+        self.__dict__.pop("num_v", None)
+        self.__dict__.pop("num_e", None)
 
     def v(self, v_id: str, default: Any = None) -> dict:
         r"""
@@ -119,25 +121,42 @@ class HypergraphDB(BaseHypergraphDB):
         r"""
         Return a list of all vertices in the hypergraph.
         """
-        return tuple(self._v_data.keys())
+        return set(self._v_data.keys())
 
     @cached_property
     def all_e(self) -> List[Tuple]:
         r"""
         Return a list of all hyperedges in the hypergraph.
         """
-        return tuple(self._e_data.keys())
+        return set(self._e_data.keys())
+    
+    @cached_property
+    def num_v(self) -> int:
+        r"""
+        Return the number of vertices in the hypergraph.
+        """
+        return len(self._v_data)
+    
+    @cached_property
+    def num_e(self) -> int:
+        r"""
+        Return the number of hyperedges in the hypergraph.
+        """
+        return len(self._e_data)
 
-    def add_v(self, v_id: Any, v_data: dict):
+    def add_v(self, v_id: Any, v_data: Optional[Dict] = None):
         r"""
         Add a vertex to the hypergraph.
 
         Args:
             ``v_id`` (``Any``): The vertex id.
-            ``v_data`` (``dict``): The vertex data.
+            ``v_data`` (``dict``, optional): The vertex data.
         """
         assert isinstance(v_id, Hashable), "The vertex id must be hashable."
-        assert isinstance(v_data, dict), "The vertex data must be a dictionary."
+        if v_data is not None:
+            assert isinstance(v_data, dict), "The vertex data must be a dictionary."
+        else:
+            v_data = {}
         if v_id not in self.all_v:
             self._v_data[v_id] = v_data
             self._v_inci[v_id] = set()
@@ -145,18 +164,21 @@ class HypergraphDB(BaseHypergraphDB):
             self._v_data[v_id].update(v_data)
         self._clear_cache()
 
-    def add_e(self, e_tuple: Union[List, Set, Tuple], e_data: dict):
+    def add_e(self, e_tuple: Union[List, Set, Tuple], e_data: Optional[Dict] = None):
         r"""
         Add a hyperedge to the hypergraph.
 
         Args:
             ``e_tuple`` (``Union[List, Set, Tuple]``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
-            ``e_data`` (``dict``): The hyperedge data.
+            ``e_data`` (``dict``, optional): The hyperedge data.
         """
         assert isinstance(
             e_tuple, (list, set, tuple)
         ), "The hyperedge must be a list, set, or tuple of vertex ids."
-        assert isinstance(e_data, dict), "The hyperedge data must be a dictionary."
+        if e_data is not None:
+            assert isinstance(e_data, dict), "The hyperedge data must be a dictionary."
+        else:
+            e_data = {}
         e_tuple = self.encode_e(e_tuple)
         if e_tuple not in self.all_e:
             self._e_data[e_tuple] = e_data
@@ -306,7 +328,7 @@ class HypergraphDB(BaseHypergraphDB):
         assert (
             v_id in self.all_v
         ), f"The vertex {v_id} does not exist in the hypergraph."
-        return list(self._v_inci[v_id])
+        return set(self._v_inci[v_id])
 
     def nbr_v_of_e(self, e_tuple: Union[List, Set, Tuple]) -> list:
         r"""
@@ -322,7 +344,7 @@ class HypergraphDB(BaseHypergraphDB):
         assert (
             e_tuple in self.all_e
         ), f"The hyperedge {e_tuple} does not exist in the hypergraph."
-        return list(e_tuple)
+        return set(e_tuple)
 
     def nbr_v(self, v_id: Any, exclude_self=True) -> list:
         r"""
@@ -340,4 +362,4 @@ class HypergraphDB(BaseHypergraphDB):
             nbrs.update(e_tuple)
         if exclude_self:
             nbrs.remove(v_id)
-        return list(nbrs)
+        return set(nbrs)

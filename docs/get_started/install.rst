@@ -8,13 +8,13 @@ Installation
 
 - Python >= 3.10
 
-Current, the stable version of **Hyper-DB** is 0.1.1. You can install it with ``pip`` as follows:
+Current, the stable version of **Hyper-DB** is 0.1.0. You can install it with ``pip`` as follows:
 
 .. code-block:: bash
 
     pip install Hyper-DB
 
-You can also try the nightly version (0.1.2) of **Hyper-DB** library with ``pip`` as follows:
+You can also try the nightly version (0.1.1) of **Hyper-DB** library with ``pip`` as follows:
 
 .. code-block:: bash
 

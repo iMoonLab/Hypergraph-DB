@@ -1,7 +1,7 @@
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Union, Tuple, List, Set, Dict, Any
+from typing import Union, Tuple, List, Set, Dict, Any, Optional
 
 
 @dataclass
@@ -10,7 +10,7 @@ class BaseHypergraphDB:
     Base class for hypergraph database.
     """
 
-    storage_file: Union[str, Path] = "hyper_db.json"
+    storage_file: Union[str, Path] = field(default="my_hypergraph.hgdb", compare=False)
 
     def save(self, file_path: Union[str, Path]):
         r"""
@@ -99,24 +99,38 @@ class BaseHypergraphDB:
         Return a list of all hyperedges in the hypergraph.
         """
         raise NotImplementedError
+    
+    @cached_property
+    def num_v(self) -> int:
+        r"""
+        Return the number of vertices in the hypergraph.
+        """
+        raise NotImplementedError
+    
+    @cached_property
+    def num_e(self) -> int:
+        r"""
+        Return the number of hyperedges in the hypergraph.
+        """
+        raise NotImplementedError
 
-    def add_v(self, v_id: Any, v_data: dict):
+    def add_v(self, v_id: Any, v_data: Optional[Dict] = None):
         r"""
         Add a vertex to the hypergraph.
 
         Args:
             ``v_id`` (``Any``): The vertex id.
-            ``v_data`` (``dict``): The vertex data.
+            ``v_data`` (``Dict``, optional): The vertex data. Defaults to None.
         """
         raise NotImplementedError
 
-    def add_e(self, e_tuple: Tuple, e_data: dict):
+    def add_e(self, e_tuple: Tuple, e_data: Optional[Dict] = None):
         r"""
         Add a hyperedge to the hypergraph.
 
         Args:
             ``e_tuple`` (``Tuple``): The hyperedge tuple: (v1_name, v2_name, ..., vn_name).
-            ``e_data`` (``dict``): The hyperedge data.
+            ``e_data`` (``Dict``, optional): The hyperedge data.
         """
         raise NotImplementedError
 

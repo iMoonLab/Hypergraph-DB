@@ -14,7 +14,18 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("../"))
-# sys.path.insert(0, os.path.abspath("../.."))
+
+def find_version(filename):
+    """
+    Find package version in file.
+    """
+    import re
+
+    content = Path(filename).read_text()
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -22,7 +33,7 @@ sys.path.insert(0, os.path.abspath("../"))
 project = 'Hyper-DB'
 copyright = '2024, Yifan Feng'
 author = 'Yifan Feng'
-release = '0.1.1'
+release = find_version("../hyperdb/__init__.py")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
