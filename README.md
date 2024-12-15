@@ -38,7 +38,7 @@
   <a href="#rocket-installation">Installation</a> &#xa0; | &#xa0;
   <a href="#checkered_flag-starting">Starting</a> &#xa0; | &#xa0;
   <a href="#memo-license">License</a> &#xa0; | &#xa0;
-  <a href="#email-license">Contact</a> &#xa0; | &#xa0;
+  <a href="#email-contact">Contact</a> &#xa0; | &#xa0;
   <a href="https://github.com/yifanfeng97" target="_blank">Author</a>
 </p>
 
@@ -188,8 +188,7 @@ print(hg2.all_e)  # Output: {(1, 3, 4)}
 
 ## :memo: License ##
 
-
-Hyper-DB is open-source and licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
+Hyper-DB is open-source and licensed under the [Apache License 2.0](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
 
 
 ---
