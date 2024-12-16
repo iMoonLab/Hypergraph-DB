@@ -220,7 +220,7 @@ print(hg.nbr_v(1))  # Output: {3, 4}
 print(hg.nbr_e_of_v(1))  # Output: {(1, 3, 4)}
 ```
 
-#### **6. Persistence (Save and Load)
+#### **6. Persistence (Save and Load)**
 
 ```python
 # Save the hypergraph to a file
