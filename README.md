@@ -9,23 +9,23 @@
 <h1 align="center">Hypergraph-DB</h1>
 
 <p align="center">
-  <img alt="Github top language" src="https://img.shields.io/github/languages/top/iMoonLab/Hyper-DB?color=800080">
+  <img alt="Github top language" src="https://img.shields.io/github/languages/top/iMoonLab/Hypergraph-DB?color=800080">
 
-  <img alt="Github language count" src="https://img.shields.io/github/languages/count/iMoonLab/Hyper-DB?color=800080">
+  <img alt="Github language count" src="https://img.shields.io/github/languages/count/iMoonLab/Hypergraph-DB?color=800080">
 
   <img alt="PyPI version" src="https://img.shields.io/pypi/v/hypergraph-db?color=purple">
   
   <!-- <img alt="Downloads" src="https://pepy.tech/badge/hypergraph-db?color=purple"> -->
 
-  <img alt="Repository size" src="https://img.shields.io/github/repo-size/iMoonLab/Hyper-DB?color=800080">
+  <img alt="Repository size" src="https://img.shields.io/github/repo-size/iMoonLab/Hypergraph-DB?color=800080">
 
-  <img alt="License" src="https://img.shields.io/github/license/iMoonLab/Hyper-DB?color=800080">
+  <img alt="License" src="https://img.shields.io/github/license/iMoonLab/Hypergraph-DB?color=800080">
 
-  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/iMoonLab/Hyper-DB?color=800080" /> -->
+  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/iMoonLab/Hypergraph-DB?color=800080" /> -->
 
-  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/iMoonLab/Hyper-DB?color=800080" /> -->
+  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/iMoonLab/Hypergraph-DB?color=800080" /> -->
 
-  <img alt="Github stars" src="https://img.shields.io/github/stars/iMoonLab/Hyper-DB?color=800080" />
+  <img alt="Github stars" src="https://img.shields.io/github/stars/iMoonLab/Hypergraph-DB?color=800080" />
 </p>
 
 <!-- Status -->
@@ -91,8 +91,8 @@ You can also install it by cloning the repository or adding it to your project m
 
 ```bash
 # Clone the repository
-git clone https://github.com/iMoonLab/Hyper-DB.git
-cd Hyper-DB
+git clone https://github.com/iMoonLab/Hypergraph-DB.git
+cd Hypergraph-DB
 
 # Install dependencies (if any)
 pip install -r requirements.txt

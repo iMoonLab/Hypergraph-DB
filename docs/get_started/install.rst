@@ -18,9 +18,9 @@ You can also try the nightly version (0.1.1) of **Hypergraph-DB** library with `
 
 .. code-block:: bash
 
-    pip install git+https://github.com/iMoonLab/Hyper-DB.git
+    pip install git+https://github.com/iMoonLab/Hypergraph-DB.git
 
 .. note:: 
     
     Nightly version is the development version of **Hypergraph-DB**. It can also be unstable and not fully tested. 
-    If you find any bugs, please report it to us in `GitHub Issues <https://github.com/iMoonLab/Hyper-DB/issues>`_.
+    If you find any bugs, please report it to us in `GitHub Issues <https://github.com/iMoonLab/Hypergraph-DB/issues>`_.

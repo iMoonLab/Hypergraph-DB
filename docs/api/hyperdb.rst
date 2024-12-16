@@ -1,4 +1,4 @@
-Hyper-DB
+Hypergraph-DB
 ==============
 
 .. autoclass:: hyperdb.BaseHypergraphDB
