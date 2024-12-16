@@ -6,7 +6,7 @@
   <!-- <a href="https://hyperdb.netlify.app">Demo</a> -->
 </div>
 
-<h1 align="center">Hyper-DB</h1>
+<h1 align="center">Hypergraph-DB</h1>
 
 <p align="center">
   <img alt="Github top language" src="https://img.shields.io/github/languages/top/iMoonLab/Hyper-DB?color=800080">
@@ -46,9 +46,9 @@
 
 ## :dart: About ##
 
-Hyper-DB is a lightweight, flexible, and Python-based database designed to model and manage **hypergraphs**—a generalized graph structure where edges (hyperedges) can connect any number of vertices. This makes Hyper-DB an ideal solution for representing complex relationships between entities in various domains, such as knowledge graphs, social networks, and scientific data modeling.
+Hypergraph-DB is a lightweight, flexible, and Python-based database designed to model and manage **hypergraphs**—a generalized graph structure where edges (hyperedges) can connect any number of vertices. This makes Hypergraph-DB an ideal solution for representing complex relationships between entities in various domains, such as knowledge graphs, social networks, and scientific data modeling.
 
-Hyper-DB provides a high-level abstraction for working with vertices and hyperedges, making it easy to add, update, query, and manage hypergraph data. With built-in support for persistence, caching, and efficient operations, Hyper-DB simplifies the management of hypergraph data structures.
+Hypergraph-DB provides a high-level abstraction for working with vertices and hyperedges, making it easy to add, update, query, and manage hypergraph data. With built-in support for persistence, caching, and efficient operations, Hypergraph-DB simplifies the management of hypergraph data structures.
 
 ---
 
@@ -77,10 +77,10 @@ Hyper-DB provides a high-level abstraction for working with vertices and hypered
 ## :rocket: Installation ##
 
 
-Hyper-DB is a Python library. You can install it directly from PyPI using `pip`.
+Hypergraph-DB is a Python library. You can install it directly from PyPI using `pip`.
 
 ```bash
-pip install Hyper-DB
+pip install hypergraph-db
 ```
 
 You can also install it by cloning the repository or adding it to your project manually. Ensure you have Python 3.10 or later installed.
@@ -98,7 +98,7 @@ pip install -r requirements.txt
 
 ## :checkered_flag: Starting ##
 
-This section provides a quick guide to get started with Hyper-DB, including iusage, and running basic operations. Below is an example of how to use Hyper-DB, based on the provided test cases.
+This section provides a quick guide to get started with Hypergraph-DB, including iusage, and running basic operations. Below is an example of how to use Hypergraph-DB, based on the provided test cases.
 
 #### **1. Create a Hypergraph**
 
@@ -188,14 +188,14 @@ print(hg2.all_e)  # Output: {(1, 3, 4)}
 
 ## :memo: License ##
 
-Hyper-DB is open-source and licensed under the [Apache License 2.0](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
+Hypergraph-DB is open-source and licensed under the [Apache License 2.0](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
 
 
 ---
 
 ## :email: Contact ##
 
-Hyper-DB is maintained by [iMoon-Lab](http://moon-lab.tech/), Tsinghua University. If you have any questions, please feel free to contact us via email: [Yifan Feng](mailto:evanfeng97@gmail.com).
+Hypergraph-DB is maintained by [iMoon-Lab](http://moon-lab.tech/), Tsinghua University. If you have any questions, please feel free to contact us via email: [Yifan Feng](mailto:evanfeng97@gmail.com).
 
 
 Made with :heart: by <a href="https://github.com/yifanfeng97" target="_blank">Yifan Feng</a>

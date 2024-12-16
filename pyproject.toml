@@ -1,13 +1,44 @@
 [tool.poetry]
-name = "hyper-db"
+name = "hypergraph-db"
 version = "0.1.0"
 description = "A Lightweight Hypergraph Database"
-authors = ["evanfeng97@gmail.com"]
+authors = ["Yifan Feng <evanfeng97@qq.com>"]
+license = "Apache-2.0"
 readme = "README.md"
+repository = "https://github.com/iMoonLab/Hyper-DB"
+keywords = ["hypergraph", "database", "visualization"]
+packages = [
+    { include = "hyperdb" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: Apache Software License",
+]
+
 
 [tool.poetry.dependencies]
 python = "^3.10"
 
+[tool.black]
+include = '\.pyi?$'
+line-length = 119
+
+[tool.isort]
+profile = "black"
+line_length = 119
 
 [build-system]
 requires = ["poetry-core"]

@@ -30,7 +30,7 @@ def find_version(filename):
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Hyper-DB'
+project = 'Hypergraph-DB'
 copyright = '2024, Yifan Feng'
 author = 'Yifan Feng'
 release = find_version("../hyperdb/__init__.py")
@@ -70,13 +70,14 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 import sphinx_rtd_theme
 
 html_theme = 'sphinx_rtd_theme'
-# html_logo = "_static/logo_DHG_white.svg"
+# html_logo = "_static/logo_hyperdb_white.svg"
+html_logo = "_static/logo.svg"
 html_theme_options = {
     # "style_nav_header_background": "#9C27B0",
-    "logo_only": True,
+    # "logo_only": True,
     "collapse_navigation": False,
 }
 html_static_path = ['_static']
 
 def setup(app):
-    app.add_css_file("css/hyper_db.css")
+    app.add_css_file("css/hyperdb.css")
