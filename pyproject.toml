@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hypergraph-db"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Lightweight Hypergraph Database"
 authors = ["Yifan Feng <evanfeng97@qq.com>"]
 license = "Apache-2.0"
