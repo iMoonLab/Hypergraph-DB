@@ -13,6 +13,10 @@
 
   <img alt="Github language count" src="https://img.shields.io/github/languages/count/iMoonLab/Hyper-DB?color=800080">
 
+  <img alt="PyPI version" src="https://img.shields.io/pypi/v/hypergraph-db?color=purple">
+  
+  <!-- <img alt="Downloads" src="https://pepy.tech/badge/hypergraph-db?color=purple"> -->
+
   <img alt="Repository size" src="https://img.shields.io/github/repo-size/iMoonLab/Hyper-DB?color=800080">
 
   <img alt="License" src="https://img.shields.io/github/license/iMoonLab/Hyper-DB?color=800080">
