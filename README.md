@@ -48,15 +48,61 @@
 
 <br>
 
-## :dart: About ##
+## :dart: About 
 
 Hypergraph-DB is a lightweight, flexible, and Python-based database designed to model and manage **hypergraphs**—a generalized graph structure where edges (hyperedges) can connect any number of vertices. This makes Hypergraph-DB an ideal solution for representing complex relationships between entities in various domains, such as knowledge graphs, social networks, and scientific data modeling.
 
 Hypergraph-DB provides a high-level abstraction for working with vertices and hyperedges, making it easy to add, update, query, and manage hypergraph data. With built-in support for persistence, caching, and efficient operations, Hypergraph-DB simplifies the management of hypergraph data structures.
 
+**:bar_chart: Performance Test Results**
+
+To demonstrate the performance of **Hypergraph-DB**, let’s consider an example:
+
+- Suppose we want to construct a **hypergraph** with **1,000,000 vertices** and **200,000 hyperedges**.
+- Using Hypergraph-DB, it takes approximately:
+  - **1.75 seconds** to add **1,000,000 vertices**.
+  - **1.82 seconds** to add **200,000 hyperedges**.
+- Querying this hypergraph:
+  - Retrieving information for **400,000 vertices** takes **0.51 seconds**.
+  - Retrieving information for **400,000 hyperedges** takes **2.52 seconds**.
+
+This example demonstrates the efficiency of Hypergraph-DB, even when working with large-scale hypergraphs. Below is a detailed table showing how the performance scales as the size of the hypergraph increases.
+
+**Detailed Performance Results**
+
+The following table shows the results of stress tests performed on Hypergraph-DB with varying scales. The tests measure the time taken to add vertices, add hyperedges, and query vertices and hyperedges.
+
+| **Number of Vertices** | **Number of Hyperedges** | **Add Vertices (s)** | **Add Edges (s)** | **Query Vertices (s/queries)** | **Query Edges (s/queries)** | **Total Time (s)** |
+|-------------------------|--------------------------|-----------------------|-------------------|-------------------------------|----------------------------|--------------------|
+| 5,000                  | 1,000                   | 0.01                 | 0.01             | 0.00/2,000                   | 0.01/2,000                | 0.02               |
+| 10,000                 | 2,000                   | 0.01                 | 0.01             | 0.00/4,000                   | 0.02/4,000                | 0.05               |
+| 25,000                 | 5,000                   | 0.03                 | 0.04             | 0.01/10,000                  | 0.05/10,000               | 0.13               |
+| 50,000                 | 10,000                  | 0.06                 | 0.07             | 0.02/20,000                  | 0.12/20,000               | 0.26               |
+| 100,000                | 20,000                  | 0.12                 | 0.17             | 0.04/40,000                  | 0.24/40,000               | 0.58               |
+| 250,000                | 50,000                  | 0.35                 | 0.40             | 0.11/100,000                 | 0.61/100,000              | 1.47               |
+| 500,000                | 100,000                 | 0.85                 | 1.07             | 0.22/200,000                 | 1.20/200,000              | 3.34               |
+| 1,000,000              | 200,000                 | 1.75                 | 1.82             | 0.51/400,000                 | 2.52/400,000              | 6.60               |
+
 ---
 
-## :sparkles: Features ##
+**Key Observations:**
+
+1. **Scalability**:  
+   Hypergraph-DB scales efficiently with the number of vertices and hyperedges. The time to add vertices and hyperedges grows linearly with the size of the hypergraph.
+
+2. **Query Performance**:  
+   Querying vertices and hyperedges remains fast, even for large-scale hypergraphs. For instance:
+   - Querying **200,000 vertices** takes only **0.22 seconds**.
+   - Querying **200,000 hyperedges** takes only **1.20 seconds**.
+
+3. **Total Time**:  
+   The total time to construct and query a hypergraph with **1,000,000 vertices** and **200,000 hyperedges** is only **6.60 seconds**, showcasing the overall efficiency of Hypergraph-DB.
+
+This performance makes **Hypergraph-DB** a great choice for applications requiring fast and scalable hypergraph data management.
+
+---
+
+## :sparkles: Features 
 
 :heavy_check_mark: **Flexible Hypergraph Representation**  
    - Supports vertices (`v`) and hyperedges (`e`), where hyperedges can connect any number of vertices.
@@ -78,7 +124,7 @@ Hypergraph-DB provides a high-level abstraction for working with vertices and hy
 
 ---
 
-## :rocket: Installation ##
+## :rocket: Installation 
 
 
 Hypergraph-DB is a Python library. You can install it directly from PyPI using `pip`.
@@ -100,7 +146,7 @@ pip install -r requirements.txt
 
 ---
 
-## :checkered_flag: Starting ##
+## :checkered_flag: Starting 
 
 This section provides a quick guide to get started with Hypergraph-DB, including iusage, and running basic operations. Below is an example of how to use Hypergraph-DB, based on the provided test cases.
 
@@ -174,7 +220,7 @@ print(hg.nbr_v(1))  # Output: {3, 4}
 print(hg.nbr_e_of_v(1))  # Output: {(1, 3, 4)}
 ```
 
-#### **6. Persistence (Save and Load)**
+#### **6. Persistence (Save and Load)
 
 ```python
 # Save the hypergraph to a file
@@ -190,14 +236,14 @@ print(hg2.all_e)  # Output: {(1, 3, 4)}
 --- 
 
 
-## :memo: License ##
+## :memo: License 
 
 Hypergraph-DB is open-source and licensed under the [Apache License 2.0](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
 
 
 ---
 
-## :email: Contact ##
+## :email: Contact 
 
 Hypergraph-DB is maintained by [iMoon-Lab](http://moon-lab.tech/), Tsinghua University. If you have any questions, please feel free to contact us via email: [Yifan Feng](mailto:evanfeng97@gmail.com).
 
