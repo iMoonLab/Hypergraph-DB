@@ -200,12 +200,22 @@ class HypergraphDB(BaseHypergraphDB):
             v_id in self._v_data
         ), f"The vertex {v_id} does not exist in the hypergraph."
         del self._v_data[v_id]
+        old_e_tuples, new_e_tuples = [], []
         for e_tuple in self._v_inci[v_id]:
             new_e_tuple = self.encode_e(set(e_tuple) - {v_id})
             if len(new_e_tuple) >= 2:
+                # todo: maybe new e tuple existing in hg, need to merge to hyperedge information
                 self._e_data[new_e_tuple] = deepcopy(self._e_data[e_tuple])
             del self._e_data[e_tuple]
+            old_e_tuples.append(e_tuple)
+            new_e_tuples.append(new_e_tuple)
         del self._v_inci[v_id]
+        for old_e_tuple, new_e_tuple in zip(old_e_tuples, new_e_tuples):
+            for _v_id in old_e_tuple:
+                if _v_id != v_id:
+                    self._v_inci[_v_id].remove(old_e_tuple)
+                    if len(new_e_tuple) >= 2:
+                        self._v_inci[_v_id].add(new_e_tuple)
         self._clear_cache()
 
     def remove_e(self, e_tuple: Union[List, Set, Tuple]):

@@ -159,65 +159,79 @@ from hyperdb import HypergraphDB
 hg = HypergraphDB()
 
 # Add vertices
-hg.add_v(1, {"name": "Alice"})
-hg.add_v(2, {"name": "Bob"})
-hg.add_v(3, {"name": "Charlie"})
+hg.add_v(1, {"name": "Alice", "age": 30, "city": "New York"})
+hg.add_v(2, {"name": "Bob", "age": 24, "city": "Los Angeles"})
+hg.add_v(3, {"name": "Charlie", "age": 28, "city": "Chicago"})
+hg.add_v(4, {"name": "David", "age": 35, "city": "Miami"})
+hg.add_v(5, {"name": "Eve", "age": 22, "city": "Seattle"})
+hg.add_v(6, {"name": "Frank", "age": 29, "city": "Houston"})
+hg.add_v(7, {"name": "Grace", "age": 31, "city": "Phoenix"})
+hg.add_v(8, {"name": "Heidi", "age": 27, "city": "San Francisco"})
+hg.add_v(9, {"name": "Ivan", "age": 23, "city": "Denver"})
+hg.add_v(10, {"name": "Judy", "age": 26, "city": "Boston"})
 
 # Add hyperedges
-hg.add_e((1, 2), {"relation": "knows"})
-hg.add_e((1, 3, 2), {"relation": "collaborates"})
+hg.add_e((1, 2, 3), {"type": "friendship", "duration": "5 years"})
+hg.add_e((1, 4), {"type": "mentorship", "topic": "career advice"})
+hg.add_e((2, 5, 6), {"type": "collaboration", "project": "AI Research"})
+hg.add_e((4, 5, 7, 9), {"type": "team", "goal": "community service"})
+hg.add_e((3, 8), {"type": "partnership", "status": "ongoing"})
+hg.add_e((9, 10), {"type": "neighbors", "relationship": "friendly"})
+hg.add_e((1, 2, 3, 7), {"type": "collaboration", "field": "music"})
+hg.add_e((2, 6, 9), {"type": "classmates", "course": "Data Science"})
 ```
 
 #### **2. Query Vertices and Hyperedges**
 
 ```python
 # Get all vertices and hyperedges
-print(hg.all_v)  # Output: {1, 2, 3}
-print(hg.all_e)  # Output: {(1, 2), (1, 2, 3)}
+print(hg.all_v)  # Output: {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+print(hg.all_e)  # Output: {(4, 5, 7, 9), (9, 10), (3, 8), (1, 2, 3), (2, 6, 9), (1, 4), (1, 2, 3, 7), (2, 5, 6)}
 
 # Query a specific vertex
-print(hg.v(1))  # Output: {'name': 'Alice'}
+print(hg.v(1))  # Output: {'name': 'Alice', 'age': 30, 'city': 'New York'}
 
 # Query a specific hyperedge
-print(hg.e((1, 2)))  # Output: {'relation': 'knows'}
+print(hg.e((1, 2, 3)))  # Output: {'type': 'friendship', 'duration': '5 years'}
 ```
 
 #### **3. Update and Remove Vertices/Hyperedges**
 
 ```python
 # Update a vertex
-hg.update_v(1, {"name": "Alice Smith"})
-print(hg.v(1))  # Output: {'name': 'Alice Smith'}
+hg.update_v(1, {"name": "Smith"})
+print(hg.v(1))  # Output: {'name': 'Smith', 'age': 30, 'city': 'New York'}
 
 # Remove a vertex
-hg.remove_v(2)
-print(hg.all_v)  # Output: {1, 3}
-print(hg.all_e)  # Output: {(1, 3)}
+hg.remove_v(3)
+print(hg.all_v)  # Output: {1, 2, 4, 5, 6, 7, 8, 9, 10}
+print(hg.all_e)  # Output: {(4, 5, 7, 9), (9, 10), (1, 2, 7), (1, 2), (2, 6, 9), (1, 4), (2, 5, 6)}
 
 # Remove a hyperedge
-hg.remove_e((1, 3))
-print(hg.all_e)  # Output: set()
+hg.remove_e((1, 4))
+print(hg.all_e)  # Output: {(4, 5, 7, 9), (9, 10), (1, 2, 7), (1, 2), (2, 6, 9), (2, 5, 6)}
 ```
 
 #### **4. Calculate Degrees**
 
 ```python
 # Get the degree of a vertex
-print(hg.degree_v(1))  # Output: 1
+print(hg.degree_v(1))  # Example Output: 2
 
 # Get the degree of a hyperedge
-print(hg.degree_e((1, 2)))  # Output: 2
+print(hg.degree_e((2, 5, 6)))  # Example Output: 3
 ```
 
 #### **5. Neighbor Queries**
 
 ```python
 # Get neighbors of a vertex
-hg.add_e((1, 3, 4), {"relation": "team"})
-print(hg.nbr_v(1))  # Output: {3, 4}
+print(hg.nbr_v(1))  # Example Output: {2, 7}
+hg.add_e((1, 4, 6), {"relation": "team"})
+print(hg.nbr_v(1))  # Example Output: {2, 4, 6, 7}
 
 # Get incident hyperedges of a vertex
-print(hg.nbr_e_of_v(1))  # Output: {(1, 3, 4)}
+print(hg.nbr_e_of_v(1))  # Example Output: {(1, 2, 7), (1, 2), (1, 4, 6)}
 ```
 
 #### **6. Persistence (Save and Load)**
@@ -228,8 +242,8 @@ hg.save("my_hypergraph.hgdb")
 
 # Load the hypergraph from a file
 hg2 = HypergraphDB(storage_file="my_hypergraph.hgdb")
-print(hg2.all_v)  # Output: {1, 3, 4}
-print(hg2.all_e)  # Output: {(1, 3, 4)}
+print(hg2.all_v)  # Output: {1, 2, 4, 5, 6, 7, 8, 9, 10}
+print(hg2.all_e)  # Output: {(4, 5, 7, 9), (9, 10), (1, 2, 7), (1, 2), (2, 6, 9), (1, 4, 6), (2, 5, 6)}
 ```
 
 
