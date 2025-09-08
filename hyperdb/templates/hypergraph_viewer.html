@@ -8,30 +8,16 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <!-- <script src="./data.js"></script> -->
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['"Segoe UI"', "Tahoma", "Geneva", "Verdana", "sans-serif"],
-            },
-            backdropBlur: {
-              xs: "2px",
-            },
-            colors: {
-              primary: {
-                50: "#faf5ff",
-                500: "#8b5cf6",
-                600: "#7c3aed",
-                700: "#6d28d9",
-              },
-            },
-          },
-        },
-      };
-    </script>
+    <style type="text/tailwindcss">
+      @theme {
+        --color-primary-50: #faf5ff;
+        --color-primary-500: #8b5cf6;
+        --color-primary-600: #7c3aed;
+        --color-primary-700: #6d28d9;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
@@ -288,7 +274,7 @@
               },
             },
             layout: {
-              type: "force",
+              type: hyperData.nodes.length > 100 ? "force-atlas2" : "force",
               clustering: visualizationMode === "graph" ? false : true,
               preventOverlap: true,
               nodeClusterBy:
@@ -303,15 +289,12 @@
         useEffect(() => {
           if (!graphDataFormatted || !containerRef.current) return;
 
-          // 销毁之前的图形实例
-          if (graphRef.current) {
-            console.log(graphRef.current);
+          // 销毁之前的图形实例并清空画布
+          if (graphRef.current && !graphRef.current.destroyed) {
             graphRef.current.clear();
-            graphRef.current.options.plugins = [];
-            graphRef.current.destroy();
-            // graphRef.current.stopLayout && graphRef.current.stopLayout(); // 停止布局
-            // graphRef.current.destroy && graphRef.current.destroy();
-            // graphRef.current = null;
+            if (containerRef.current) {
+              containerRef.current.innerHTML = "";
+            }
           }
 
           const graph = new Graph({
@@ -361,18 +344,18 @@
 
           return () => {
             window.removeEventListener("resize", handleResize);
-            if (graphRef.current) {
-              // graphRef.current.clear();
-              // graphRef.current.stopLayout && graphRef.current.stopLayout(); // 停止布局
-              graphRef.current.destroy && graphRef.current.destroy();
-              graphRef.current = null;
+            if (graphRef.current && !graphRef.current.destroyed) {
+              graphRef.current.clear();
+            }
+            if (containerRef.current) {
+              containerRef.current.innerHTML = "";
             }
           };
         }, [graphDataFormatted, visualizationMode]);
 
         return (
           <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <div className="w-80 bg-white/95 backdrop-blur-sm border-r border-gray-200/50 p-6 overflow-y-auto shadow-xl">
+            <div className="w-80 h-screen overflow-hidden bg-white/95 backdrop-blur-sm border-r border-gray-200/50 p-6  shadow-xl">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
                 Hypergraph-DB
               </h2>
@@ -473,7 +456,7 @@
                 )}
               </div>
 
-              <div className=" overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-inner">
+              <div className="overflow-y-scroll hide-scrollbar h-[50vh] relative border border-gray-200 rounded-xl bg-white shadow-inner">
                 {filteredVertices.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">
                     {searchTerm
@@ -534,7 +517,7 @@
             </div>
 
             <div className="flex-1 flex flex-col bg-white/10 backdrop-blur-sm">
-              <div className="bg-white/95 p-6 border-b border-gray-200/50 flex justify-between items-center shadow-sm">
+              <div className="bg-white/95 p-4 border-b border-gray-200/50 flex justify-between items-center shadow-sm">
                 <div className="flex items-center gap-4">
                   <h3 className="text-xl font-semibold text-gray-800 m-0">
                     {visualizationMode === "hyper" ? "Hypergraph" : "Graph"}{" "}
@@ -610,7 +593,7 @@
                 {!loading && (
                   <div
                     ref={containerRef}
-                    className="w-full min-h-[95vh] rounded-xl"
+                    className="w-full h-[calc(100vh-100px)] rounded-xl"
                   />
                 )}
               </div>
