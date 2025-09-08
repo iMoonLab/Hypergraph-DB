@@ -1,7 +1,7 @@
 <div align="center" id="top"> 
   <img src="docs/_static/logo.svg" alt="Hyper DB"  width="30%" height="50%" />
 
-  &#xa0;
+&#xa0;
 
   <!-- <a href="https://hyperdb.netlify.app">Demo</a> -->
 </div>
@@ -30,9 +30,9 @@
 
 <!-- Status -->
 
-<!-- <h4 align="center"> 
+<!-- <h4 align="center">
 	🚧  Hyper DB 🚀 Under construction...  🚧
-</h4> 
+</h4>
 
 <hr> -->
 
@@ -48,7 +48,7 @@
 
 <br>
 
-## :dart: About 
+## :dart: About
 
 Hypergraph-DB is a lightweight, flexible, and Python-based database designed to model and manage **hypergraphs**—a generalized graph structure where edges (hyperedges) can connect any number of vertices. This makes Hypergraph-DB an ideal solution for representing complex relationships between entities in various domains, such as knowledge graphs, social networks, and scientific data modeling.
 
@@ -73,15 +73,15 @@ This example demonstrates the efficiency of Hypergraph-DB, even when working wit
 The following table shows the results of stress tests performed on Hypergraph-DB with varying scales. The tests measure the time taken to add vertices, add hyperedges, and query vertices and hyperedges.
 
 | **Number of Vertices** | **Number of Hyperedges** | **Add Vertices (s)** | **Add Edges (s)** | **Query Vertices (s/queries)** | **Query Edges (s/queries)** | **Total Time (s)** |
-|-------------------------|--------------------------|-----------------------|-------------------|-------------------------------|----------------------------|--------------------|
-| 5,000                  | 1,000                   | 0.01                 | 0.01             | 0.00/2,000                   | 0.01/2,000                | 0.02               |
-| 10,000                 | 2,000                   | 0.01                 | 0.01             | 0.00/4,000                   | 0.02/4,000                | 0.05               |
-| 25,000                 | 5,000                   | 0.03                 | 0.04             | 0.01/10,000                  | 0.05/10,000               | 0.13               |
-| 50,000                 | 10,000                  | 0.06                 | 0.07             | 0.02/20,000                  | 0.12/20,000               | 0.26               |
-| 100,000                | 20,000                  | 0.12                 | 0.17             | 0.04/40,000                  | 0.24/40,000               | 0.58               |
-| 250,000                | 50,000                  | 0.35                 | 0.40             | 0.11/100,000                 | 0.61/100,000              | 1.47               |
-| 500,000                | 100,000                 | 0.85                 | 1.07             | 0.22/200,000                 | 1.20/200,000              | 3.34               |
-| 1,000,000              | 200,000                 | 1.75                 | 1.82             | 0.51/400,000                 | 2.52/400,000              | 6.60               |
+| ---------------------- | ------------------------ | -------------------- | ----------------- | ------------------------------ | --------------------------- | ------------------ |
+| 5,000                  | 1,000                    | 0.01                 | 0.01              | 0.00/2,000                     | 0.01/2,000                  | 0.02               |
+| 10,000                 | 2,000                    | 0.01                 | 0.01              | 0.00/4,000                     | 0.02/4,000                  | 0.05               |
+| 25,000                 | 5,000                    | 0.03                 | 0.04              | 0.01/10,000                    | 0.05/10,000                 | 0.13               |
+| 50,000                 | 10,000                   | 0.06                 | 0.07              | 0.02/20,000                    | 0.12/20,000                 | 0.26               |
+| 100,000                | 20,000                   | 0.12                 | 0.17              | 0.04/40,000                    | 0.24/40,000                 | 0.58               |
+| 250,000                | 50,000                   | 0.35                 | 0.40              | 0.11/100,000                   | 0.61/100,000                | 1.47               |
+| 500,000                | 100,000                  | 0.85                 | 1.07              | 0.22/200,000                   | 1.20/200,000                | 3.34               |
+| 1,000,000              | 200,000                  | 1.75                 | 1.82              | 0.51/400,000                   | 2.52/400,000                | 6.60               |
 
 ---
 
@@ -92,6 +92,7 @@ The following table shows the results of stress tests performed on Hypergraph-DB
 
 2. **Query Performance**:  
    Querying vertices and hyperedges remains fast, even for large-scale hypergraphs. For instance:
+
    - Querying **200,000 vertices** takes only **0.22 seconds**.
    - Querying **200,000 hyperedges** takes only **1.20 seconds**.
 
@@ -102,30 +103,40 @@ This performance makes **Hypergraph-DB** a great choice for applications requiri
 
 ---
 
-## :sparkles: Features 
+## :sparkles: Features
 
-:heavy_check_mark: **Flexible Hypergraph Representation**  
-   - Supports vertices (`v`) and hyperedges (`e`), where hyperedges can connect any number of vertices.
-   - Hyperedges are represented as sorted tuples of vertex IDs, ensuring consistency and efficient operations.
+:heavy_check_mark: **Flexible Hypergraph Representation**
 
-:heavy_check_mark: **Vertex and Hyperedge Management**  
-   - Add, update, delete, and query vertices and hyperedges with ease.
-   - Built-in methods to retrieve neighbors, incident edges, and other relationships.
+- Supports vertices (`v`) and hyperedges (`e`), where hyperedges can connect any number of vertices.
+- Hyperedges are represented as sorted tuples of vertex IDs, ensuring consistency and efficient operations.
 
-:heavy_check_mark: **Neighbor Queries**  
-   - Get neighboring vertices or hyperedges for a given vertex or hyperedge.
+:heavy_check_mark: **Vertex and Hyperedge Management**
 
-:heavy_check_mark: **Persistence**  
-   - Save and load hypergraphs to/from disk using efficient serialization (`pickle`).
-   - Ensures data integrity and supports large-scale data storage.
+- Add, update, delete, and query vertices and hyperedges with ease.
+- Built-in methods to retrieve neighbors, incident edges, and other relationships.
 
-:heavy_check_mark: **Customizable and Extensible**  
-   - Built on Python’s `dataclasses`, making it easy to extend and customize for specific use cases.
+:heavy_check_mark: **Neighbor Queries**
+
+- Get neighboring vertices or hyperedges for a given vertex or hyperedge.
+
+:heavy_check_mark: **Persistence**
+
+- Save and load hypergraphs to/from disk using efficient serialization (`pickle`).
+- Ensures data integrity and supports large-scale data storage.
+
+:heavy_check_mark: **Interactive Visualization**
+
+- Built-in web-based visualization tool with `draw()` method.
+- Interactive exploration of hypergraph structure, vertex properties, and relationships.
+- Real-time visualization that reflects the current state of your hypergraph.
+
+:heavy_check_mark: **Customizable and Extensible**
+
+- Built on Python's `dataclasses`, making it easy to extend and customize for specific use cases.
 
 ---
 
-## :rocket: Installation 
-
+## :rocket: Installation
 
 Hypergraph-DB is a Python library. You can install it directly from PyPI using `pip`.
 
@@ -146,7 +157,7 @@ pip install -r requirements.txt
 
 ---
 
-## :checkered_flag: Starting 
+## :checkered_flag: Starting
 
 This section provides a quick guide to get started with Hypergraph-DB, including iusage, and running basic operations. Below is an example of how to use Hypergraph-DB, based on the provided test cases.
 
@@ -246,26 +257,45 @@ print(hg2.all_v)  # Output: {1, 2, 4, 5, 6, 7, 8, 9, 10}
 print(hg2.all_e)  # Output: {(4, 5, 7, 9), (9, 10), (1, 2, 7), (1, 2), (2, 6, 9), (1, 4, 6), (2, 5, 6)}
 ```
 
+#### **7. Visualization with draw()**
 
---- 
+Hypergraph-DB includes a built-in visualization tool that allows you to interactively explore your hypergraph data through a web-based interface.
 
+```python
+# Visualize the hypergraph in your browser
+hg.draw()
+```
 
-## :memo: License 
+The `draw()` function will:
 
-Hypergraph-DB is open-source and licensed under the [Apache License 2.0](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
+- Start a local web server (default port: 8080)
+- Automatically open your default web browser
+- Display an interactive visualization of your hypergraph
+- Show vertex degrees, relationships, and hyperedge information
+- Allow you to explore the graph structure visually
 
+**Features of the visualization:**
+
+- **Interactive HyperGraph View**: Navigate through vertices and hyperedges
+- **Vertex Information**: View vertex properties, degrees, and descriptions
+- **Hyperedge Details**: Explore hyperedge relationships and metadata
+- **Degree-based Sorting**: Vertices are sorted by degree for easy identification of important nodes
+- **Real-time Data**: The visualization reflects the current state of your hypergraph
 
 ---
 
-## :email: Contact 
+## :memo: License
+
+Hypergraph-DB is open-source and licensed under the [Apache License 2.0](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
+
+---
+
+## :email: Contact
 
 Hypergraph-DB is maintained by [iMoon-Lab](http://moon-lab.tech/), Tsinghua University. If you have any questions, please feel free to contact us via email: [Yifan Feng](mailto:evanfeng97@gmail.com).
-
 
 Made with :heart: by <a href="https://github.com/yifanfeng97" target="_blank">Yifan Feng</a>
 
 &#xa0;
 
 <a href="#top">Back to top</a>
-
-

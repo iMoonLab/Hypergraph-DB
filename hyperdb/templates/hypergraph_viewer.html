@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hypergraph Visualization</title>
+    <script src="https://unpkg.com/@antv/g6@5/dist/g6.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- <script src="./data.js"></script> -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Segoe UI"', "Tahoma", "Geneva", "Verdana", "sans-serif"],
+            },
+            backdropBlur: {
+              xs: "2px",
+            },
+            colors: {
+              primary: {
+                50: "#faf5ff",
+                500: "#8b5cf6",
+                600: "#7c3aed",
+                700: "#6d28d9",
+              },
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useMemo, useRef } = React;
+      const { Graph } = window.G6;
+
+      // 嵌入的数据
+      const embeddedData = {{DATA_JSON}};
+      // const embeddedData = datas;
+      // 颜色配置
+      const colors = [
+        "#F6BD16",
+        "#00C9C9",
+        "#F08F56",
+        "#D580FF",
+        "#FF3D00",
+        "#16f69c",
+        "#004ac9",
+        "#f056d1",
+        "#a680ff",
+        "#c8ff00",
+      ];
+
+      const entityTypeColors = {
+        PERSON: "#00C9C9",
+        CONCEPT: "#a68fff",
+        ORGANIZATION: "#F08F56",
+        LOCATION: "#16f69c",
+        EVENT: "#004ac9",
+        PRODUCT: "#f056d1",
+      };
+
+      function HyperGraphViewer() {
+        const containerRef = useRef(null);
+        const graphRef = useRef(null);
+        const [databases, setDatabases] = useState([embeddedData.database]);
+        const [vertices, setVertices] = useState(embeddedData.vertices);
+        const [selectedVertex, setSelectedVertex] = useState(
+          embeddedData.vertices.length > 0 ? embeddedData.vertices[0].id : ""
+        );
+        const [graphData, setGraphData] = useState(null);
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState("");
+        const [searchTerm, setSearchTerm] = useState("");
+        const [searchResults, setSearchResults] = useState([]);
+        const [filteredVertices, setFilteredVertices] = useState(
+          embeddedData.vertices
+        );
+        const [visualizationMode, setVisualizationMode] = useState("hyper"); // 'hyper' or 'graph'
+        const [graphVersion, setGraphVersion] = useState(0);
+
+        // 搜索功能
+        useEffect(() => {
+          if (!searchTerm.trim()) {
+            setFilteredVertices(embeddedData.vertices);
+            setSearchResults([]);
+            return;
+          }
+
+          const results = [];
+          const searchLower = searchTerm.toLowerCase();
+
+          const filtered = embeddedData.vertices.filter((vertex) => {
+            const matches =
+              vertex.id.toString().toLowerCase().includes(searchLower) ||
+              (vertex.entity_type &&
+                vertex.entity_type.toLowerCase().includes(searchLower)) ||
+              (vertex.description &&
+                vertex.description.toLowerCase().includes(searchLower));
+
+            if (matches) {
+              // 计算匹配度分数，用于排序
+              let score = 0;
+              if (vertex.id.toString().toLowerCase().includes(searchLower))
+                score += 3;
+              if (
+                vertex.entity_type &&
+                vertex.entity_type.toLowerCase().includes(searchLower)
+              )
+                score += 2;
+              if (
+                vertex.description &&
+                vertex.description.toLowerCase().includes(searchLower)
+              )
+                score += 1;
+
+              results.push({ ...vertex, score });
+            }
+            return matches;
+          });
+
+          // 按匹配度分数排序
+          results.sort((a, b) => b.score - a.score);
+          const sortedResults = results.map(({ score, ...vertex }) => vertex);
+
+          setFilteredVertices(sortedResults);
+          setSearchResults(sortedResults);
+        }, [searchTerm]);
+
+        // 加载图数据（从嵌入数据获取）
+        useEffect(() => {
+          if (selectedVertex) {
+            setLoading(true);
+            setError("");
+
+            // 从嵌入数据获取图数据
+            const data = embeddedData.graphs[selectedVertex];
+            if (data) {
+              setGraphData(data);
+            } else {
+              setError("Graph data not found for this vertex");
+            }
+            setLoading(false);
+          }
+        }, [selectedVertex]);
+
+        // 转换数据为 G6 Graph 格式，根据可视化模式处理
+        const graphDataFormatted = useMemo(() => {
+          if (!graphData) return null;
+
+          const hyperData = { nodes: [], edges: [] };
+          const plugins = [];
+
+          // 添加顶点
+          for (const [key, value] of Object.entries(graphData.vertices)) {
+            hyperData.nodes.push({
+              id: key,
+              label: key,
+              ...value,
+            });
+          }
+
+          if (visualizationMode === "graph") {
+            // Graph模式：只显示维度为2的球棍图（仅保留包含2个节点的超边）
+            const edgeKeys = Object.keys(graphData.edges);
+            const edgeSet = new Set(); // 用于去重
+
+            for (let i = 0; i < edgeKeys.length; i++) {
+              const key = edgeKeys[i];
+              const edge = graphData.edges[key];
+              const nodes = key.split("|#|");
+              // 仅保留正好包含2个节点的边，其余丢弃
+              if (nodes.length !== 2) continue;
+
+              // 创建边的唯一标识符，确保顺序一致
+              const [a, b] = nodes;
+              const edgeId = a < b ? `${a}-${b}` : `${b}-${a}`;
+              if (!edgeSet.has(edgeId)) {
+                edgeSet.add(edgeId);
+                hyperData.edges.push({
+                  source: a,
+                  target: b,
+                  ...edge,
+                });
+              }
+            }
+            //   过滤nodes不在hyperData.edges中的节点
+            hyperData.nodes = hyperData.nodes.filter((node) => {
+              return hyperData.edges.some((edge) => {
+                return edge.source === node.id || edge.target === node.id;
+              });
+            });
+          } else {
+            // Hyper模式：使用bubble-sets插件
+            // 创建样式函数
+            const createStyle = (baseColor) => ({
+              fill: baseColor,
+              stroke: baseColor,
+              maxRoutingIterations: 100,
+              maxMarchingIterations: 20,
+              pixelGroup: 4,
+              edgeR0: 10,
+              edgeR1: 60,
+              nodeR0: 15,
+              nodeR1: 50,
+              morphBuffer: 10,
+              threshold: 4,
+              memberInfluenceFactor: 1,
+              edgeInfluenceFactor: 4,
+              nonMemberInfluenceFactor: -0.8,
+              virtualEdges: true,
+            });
+
+            // 添加超边
+            const edgeKeys = Object.keys(graphData.edges);
+            for (let i = 0; i < edgeKeys.length; i++) {
+              const key = edgeKeys[i];
+              const edge = graphData.edges[key];
+              const nodes = key.split("|#|");
+
+              plugins.push({
+                key: `bubble-sets-${key}`,
+                type: "bubble-sets",
+                members: nodes,
+                ...createStyle(colors[i % colors.length]),
+              });
+            }
+          }
+
+          // 添加tooltip插件
+          plugins.push({
+            type: "tooltip",
+            getContent: (e, items) => {
+              let result = "";
+              items.forEach((item) => {
+                result += `<h4>${item.id}</h4>`;
+                if (item.entity_name) {
+                  result += `<p><strong>Name:</strong> ${item.entity_name}</p>`;
+                }
+                if (item.entity_type) {
+                  result += `<p><strong>Type:</strong> ${item.entity_type}</p>`;
+                }
+                if (item.description) {
+                  const desc = item.description
+                    .split("<SEP>")
+                    .slice(0, 2)
+                    .join("; ");
+                  result += `<p><strong>Description:</strong> ${desc}</p>`;
+                }
+              });
+              return result;
+            },
+          });
+
+          return {
+            data: hyperData,
+            plugins:
+              visualizationMode === "graph"
+                ? [plugins[plugins.length - 1]]
+                : plugins, // graph模式只保留tooltip
+            node: {
+              palette: { field: "cluster" },
+              style: {
+                size: visualizationMode === "graph" ? 20 : 25,
+                labelText: (d) => d.id,
+                fill: (d) => {
+                  if (d.id === selectedVertex) {
+                    return "black";
+                  }
+                  if (d.entity_type) {
+                    return entityTypeColors[d.entity_type] || "#8566CC";
+                  }
+                  return "#8566CC";
+                },
+              },
+            },
+            edge: {
+              style: {
+                size: visualizationMode === "graph" ? 3 : 2,
+                stroke: visualizationMode === "graph" ? "#a68fff" : undefined,
+                lineWidth: visualizationMode === "graph" ? 2 : undefined,
+              },
+            },
+            layout: {
+              type: "force",
+              clustering: visualizationMode === "graph" ? false : true,
+              preventOverlap: true,
+              nodeClusterBy:
+                visualizationMode === "graph" ? undefined : "entity_type",
+              gravity: 20,
+              linkDistance: visualizationMode === "graph" ? 100 : 150,
+            },
+          };
+        }, [graphData, selectedVertex, visualizationMode]);
+
+        // 初始化图形
+        useEffect(() => {
+          if (!graphDataFormatted || !containerRef.current) return;
+
+          // 销毁之前的图形实例
+          if (graphRef.current) {
+            console.log(graphRef.current);
+            graphRef.current.clear();
+            graphRef.current.options.plugins = [];
+            graphRef.current.destroy();
+            // graphRef.current.stopLayout && graphRef.current.stopLayout(); // 停止布局
+            // graphRef.current.destroy && graphRef.current.destroy();
+            // graphRef.current = null;
+          }
+
+          const graph = new Graph({
+            container: containerRef.current,
+            width: containerRef.current.offsetWidth,
+            height: containerRef.current.offsetHeight || 800,
+            data: graphDataFormatted.data,
+            behaviors: ["zoom-canvas", "drag-canvas", "drag-element"],
+            autoFit: "center",
+            animate: false,
+            node: graphDataFormatted.node,
+            edge: graphDataFormatted.edge,
+            layout: graphDataFormatted.layout,
+            plugins: graphDataFormatted.plugins,
+          });
+
+          graphRef.current = graph;
+          graphRef.current.render();
+
+          // 添加节点点击事件
+          graph.on("node:click", (e) => {
+            const { itemId } = e;
+            console.log("Clicked node:", itemId);
+          });
+
+          // 添加节点悬停事件
+          graph.on("node:pointerenter", (e) => {
+            const { itemId } = e;
+            const node = graph.getNodeData(itemId);
+            if (node && node.data) {
+              // 可以在这里显示tooltip
+              console.log("Node data:", node.data);
+            }
+          });
+
+          // 添加窗口大小变化监听
+          const handleResize = () => {
+            if (graphRef.current && containerRef.current) {
+              graphRef.current.setSize(
+                containerRef.current.offsetWidth,
+                containerRef.current.offsetHeight
+              );
+            }
+          };
+
+          window.addEventListener("resize", handleResize);
+
+          return () => {
+            window.removeEventListener("resize", handleResize);
+            if (graphRef.current) {
+              // graphRef.current.clear();
+              // graphRef.current.stopLayout && graphRef.current.stopLayout(); // 停止布局
+              graphRef.current.destroy && graphRef.current.destroy();
+              graphRef.current = null;
+            }
+          };
+        }, [graphDataFormatted, visualizationMode]);
+
+        return (
+          <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            <div className="w-80 bg-white/95 backdrop-blur-sm border-r border-gray-200/50 p-6 overflow-y-auto shadow-xl">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                Hypergraph-DB
+              </h2>
+
+              <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
+                Database Information
+              </div>
+              <div className="p-4 rounded-xl mb-6 text-sm border">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-semibold text-gray-700">Vertices:</span>
+                  <span className="font-bold text-primary-600">
+                    {embeddedData.database.vertices}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-semibold text-gray-700">
+                    Hyperedges:
+                  </span>
+                  <span className="font-bold text-primary-600">
+                    {embeddedData.database.edges}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-700">
+                    Displayed Vertices:
+                  </span>
+                  <span className="font-bold text-primary-600">
+                    {vertices.length}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
+                Search & Vertex List
+              </div>
+
+              {/* 搜索框 */}
+              <div className="mb-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search vertex ID, type or description..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && searchResults.length > 0) {
+                        setSelectedVertex(searchResults[0].id);
+                        e.target.blur();
+                      }
+                    }}
+                    className="w-full px-4 py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {searchTerm && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    Found {searchResults.length} matching results
+                    {searchResults.length > 0 && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (Press Enter to select first result)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className=" overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-inner">
+                {filteredVertices.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    {searchTerm
+                      ? "No matching vertices found"
+                      : "No vertex data available"}
+                  </div>
+                ) : (
+                  filteredVertices.map((vertex) => {
+                    const isSearchMatch = searchResults.some(
+                      (result) => result.id === vertex.id
+                    );
+                    const isSelected = selectedVertex === vertex.id;
+
+                    return (
+                      <div
+                        key={vertex.id}
+                        className={`p-2 border-b border-gray-100 cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm ${
+                          isSelected
+                            ? "bg-primary-50 border-l-4 border-l-primary-500 shadow-md"
+                            : isSearchMatch
+                            ? "bg-yellow-50 border-l-4 border-l-yellow-400 shadow-sm"
+                            : ""
+                        }`}
+                        onClick={() => setSelectedVertex(vertex.id)}
+                      >
+                        <div className="font-bold text-gray-800 mb-2 flex items-center">
+                          {vertex.id}
+                          {isSearchMatch && (
+                            <span className="ml-2 px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs font-semibold">
+                              Match
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600 flex gap-2 items-center">
+                          <div className="flex items-center">
+                            <span className="font-medium">Type:</span>
+                            <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
+                              {vertex.entity_type || "Unknown"}
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="font-medium">Degree:</span>
+                            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                              {vertex.degree}
+                            </span>
+                          </div>
+                        </div>
+                        {vertex.description && (
+                          <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                            {vertex.description}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col bg-white/10 backdrop-blur-sm">
+              <div className="bg-white/95 p-6 border-b border-gray-200/50 flex justify-between items-center shadow-sm">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-xl font-semibold text-gray-800 m-0">
+                    {visualizationMode === "hyper" ? "Hypergraph" : "Graph"}{" "}
+                    Visualization {selectedVertex && `- ${selectedVertex}`}
+                  </h3>
+
+                  {/* 可视化模式选择器 */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Mode:</span>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => setVisualizationMode("hyper")}
+                        className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
+                          visualizationMode === "hyper"
+                            ? "bg-primary-500 text-white shadow-md"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        HyperGraph
+                      </button>
+                      <button
+                        onClick={() => setVisualizationMode("graph")}
+                        className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
+                          visualizationMode === "graph"
+                            ? "bg-primary-500 text-white shadow-md"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        Graph
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {graphData && (
+                  <div className="bg-white px-4 py-2 text-sm text-gray-600 rounded-lg shadow-sm border border-gray-200">
+                    <span className="font-semibold">Vertices:</span>{" "}
+                    {Object.keys(graphData.vertices).length} |
+                    <span className="font-semibold ml-1">
+                      {visualizationMode === "hyper" ? "Hyperedges:" : "Edges:"}
+                    </span>{" "}
+                    {visualizationMode === "hyper"
+                      ? Object.keys(graphData.edges).length
+                      : graphDataFormatted?.data?.edges?.length || 0}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 relative bg-white">
+                {error && (
+                  <div className="bg-red-50 text-red-700 p-4 m-4 rounded-lg border-l-4 border-red-500 shadow-sm">
+                    <div className="flex items-center">
+                      <span className="text-xl mr-2">⚠️</span>
+                      <span className="font-medium">{error}</span>
+                    </div>
+                  </div>
+                )}
+
+                {loading && (
+                  <div className="flex justify-center items-center h-full text-lg text-gray-600">
+                    <div className="text-center">
+                      <div className="text-2xl mb-4">🔄</div>
+                      <div className="font-semibold">
+                        Loading hypergraph data...
+                      </div>
+                      <div className="text-sm mt-2 text-gray-500">
+                        This may take a few seconds
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!loading && (
+                  <div
+                    ref={containerRef}
+                    className="w-full min-h-[95vh] rounded-xl"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.render(<HyperGraphViewer />, document.getElementById("root"));
+    </script>
+  </body>
+</html>
