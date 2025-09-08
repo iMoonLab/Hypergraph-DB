@@ -283,3 +283,20 @@ class BaseHypergraphDB:
         Return basic statistics of the hypergraph.
         """
         raise NotImplementedError
+    
+    def draw(self, port: int = 8080, open_browser: bool = True):
+        """
+        Draw the hypergraph data of the current HyperDB instance
+        
+        Args:  
+            ``port``: Server port number, defaults to 8080  
+            ``open_browser``: Whether to automatically open the browser, defaults to True  
+
+        """
+        from .draw import draw_hypergraph
+        
+        return draw_hypergraph(
+            hypergraph_db=self,
+            port=port,
+            open_browser=open_browser
+        )
