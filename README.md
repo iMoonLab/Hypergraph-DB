@@ -1,60 +1,86 @@
-<div align="center" id="top"> 
-  <img src="docs/_static/logo.svg" alt="Hyper DB"  width="30%" height="50%" />
+<div align="center">
+  <img src="docs/assets/logo.svg" alt="Hypergraph-DB Logo" width="200"/>
+  
+  <h1>Hypergraph-DB</h1>
+  <p><em>A Lightweight, Fast, and Modern Hypergraph Database with Hypergraph Visualization.</em></p>
 
-&#xa0;
+  <p>
+    <a href="https://pypi.org/project/hypergraph-db/">
+      <img src="https://img.shields.io/pypi/v/hypergraph-db?color=purple&style=for-the-badge" alt="PyPI version"/>
+    </a>
+    <a href="https://github.com/iMoonLab/Hypergraph-DB/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/iMoonLab/Hypergraph-DB?color=purple&style=for-the-badge" alt="License"/>
+    </a>
+    <a href="https://github.com/iMoonLab/Hypergraph-DB">
+      <img src="https://img.shields.io/github/stars/iMoonLab/Hypergraph-DB?color=purple&style=for-the-badge" alt="GitHub stars"/>
+    </a>
+  </p>
+  
+  <p>
+    <a href="https://img.shields.io/pypi/pyversions/hypergraph-db">
+      <img src="https://img.shields.io/pypi/pyversions/hypergraph-db?style=flat-square" alt="Python versions"/>
+    </a>
+    <a href="https://github.com/iMoonLab/Hypergraph-DB/actions">
+      <img src="https://img.shields.io/github/actions/workflow/status/iMoonLab/Hypergraph-DB/ci.yml?branch=main&style=flat-square" alt="CI Status"/>
+    </a>
+    <a href="https://github.com/iMoonLab/Hypergraph-DB">
+      <img src="https://img.shields.io/github/repo-size/iMoonLab/Hypergraph-DB?style=flat-square&color=purple" alt="Repo size"/>
+    </a>
+  </p>
 
-  <!-- <a href="https://hyperdb.netlify.app">Demo</a> -->
+  <p>
+    <a href="#-features">Features</a> •
+    <a href="#-quick-start">Quick Start</a> •
+    <a href="#-installation">Installation</a> •
+    <a href="#-documentation">Documentation</a> •
+    <a href="#-examples">Examples</a>
+  </p>
 </div>
 
-<h1 align="center">Hypergraph-DB</h1>
+---
 
-<p align="center">
-  <img alt="Github top language" src="https://img.shields.io/github/languages/top/iMoonLab/Hypergraph-DB?color=800080">
+## 🚀 About
 
-  <img alt="Github language count" src="https://img.shields.io/github/languages/count/iMoonLab/Hypergraph-DB?color=800080">
+**Hypergraph-DB** is a lightweight, flexible, and high-performance Python library for modeling and managing **hypergraphs** — advanced graph structures where edges (hyperedges) can connect any number of vertices. Unlike traditional graphs that only support pairwise relationships, hypergraphs naturally represent complex multi-way relationships found in real-world scenarios.
 
-  <img alt="PyPI version" src="https://img.shields.io/pypi/v/hypergraph-db?color=purple">
-  
-  <!-- <img alt="Downloads" src="https://pepy.tech/badge/hypergraph-db?color=purple"> -->
+### 🎯 Why Hypergraphs?
 
-  <img alt="Repository size" src="https://img.shields.io/github/repo-size/iMoonLab/Hypergraph-DB?color=800080">
+<div align="center">
+  <img src="docs/assets/vis_hg.jpg" alt="Hypergraph Visualization" width="600"/>
+</div>
 
-  <img alt="License" src="https://img.shields.io/github/license/iMoonLab/Hypergraph-DB?color=800080">
+**Traditional graphs** can only model pairwise relationships:
+```
+Alice ←→ Bob, Bob ←→ Charlie, Alice ←→ Charlie (3 separate edges)
+```
 
-  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/iMoonLab/Hypergraph-DB?color=800080" /> -->
+**Hypergraphs** naturally model group relationships:
+```
+{Alice, Bob, Charlie} — working together on a project (1 hyperedge)
+```
 
-  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/iMoonLab/Hypergraph-DB?color=800080" /> -->
+### 🌟 Perfect for
 
-  <img alt="Github stars" src="https://img.shields.io/github/stars/iMoonLab/Hypergraph-DB?color=800080" />
-</p>
+- **📚 Academic Collaborations**: Research papers with multiple co-authors
+- **👥 Social Networks**: Group activities and multi-party interactions  
+- **🛒 E-commerce**: Shopping baskets with multiple items
+- **🧬 Bioinformatics**: Protein interactions and genetic networks
+- **🏗️ Knowledge Graphs**: Complex entity relationships
 
-<!-- Status -->
+## ✨ Features
 
-<!-- <h4 align="center">
-	🚧  Hyper DB 🚀 Under construction...  🚧
-</h4>
+| Feature | Description |
+|---------|-------------|
+| 🚀 **High Performance** | Handle millions of vertices and edges efficiently |
+| 🔗 **Native Hypergraph Support** | True multi-way relationships, not decomposed binary edges |
+| 💾 **Persistence** | Save/load with pickle, JSON, or custom formats |
+| 🎨 **Interactive Visualization** | Built-in web-based visualization with D3.js |
+| 🔍 **Rich Queries** | Neighbor queries, degree calculations, community detection |
+| 📊 **Flexible Attributes** | Rich metadata for both vertices and hyperedges |
+| 🛠️ **Developer Friendly** | Modern Python with type hints, comprehensive docs |
+| ⚡ **Modern Tooling** | Built with uv, tested, and well-documented |
 
-<hr> -->
-
-<p align="center">
-  <a href="#dart-about">About</a> &#xa0; | &#xa0; 
-  <a href="#sparkles-features">Features</a> &#xa0; | &#xa0;
-  <a href="#rocket-installation">Installation</a> &#xa0; | &#xa0;
-  <a href="#checkered_flag-starting">Starting</a> &#xa0; | &#xa0;
-  <a href="#memo-license">License</a> &#xa0; | &#xa0;
-  <a href="#email-contact">Contact</a> &#xa0; | &#xa0;
-  <a href="https://github.com/yifanfeng97" target="_blank">Author</a>
-</p>
-
-<br>
-
-## :dart: About
-
-Hypergraph-DB is a lightweight, flexible, and Python-based database designed to model and manage **hypergraphs**—a generalized graph structure where edges (hyperedges) can connect any number of vertices. This makes Hypergraph-DB an ideal solution for representing complex relationships between entities in various domains, such as knowledge graphs, social networks, and scientific data modeling.
-
-Hypergraph-DB provides a high-level abstraction for working with vertices and hyperedges, making it easy to add, update, query, and manage hypergraph data. With built-in support for persistence, caching, and efficient operations, Hypergraph-DB simplifies the management of hypergraph data structures.
-
-**:bar_chart: Performance Test Results**
+## 📈 Performance
 
 To demonstrate the performance of **Hypergraph-DB**, let’s consider an example:
 
@@ -103,63 +129,86 @@ This performance makes **Hypergraph-DB** a great choice for applications requiri
 
 ---
 
-## :sparkles: Features
+## ✨ Features
 
-:heavy_check_mark: **Flexible Hypergraph Representation**
+<div align="center">
 
-- Supports vertices (`v`) and hyperedges (`e`), where hyperedges can connect any number of vertices.
-- Hyperedges are represented as sorted tuples of vertex IDs, ensuring consistency and efficient operations.
+| 🏗️ **Feature** | 📖 **Description** |
+|----------------|-------------------|
+| **🎯 Flexible Structure** | Support for complex hypergraphs with vertices and multi-way connections |
+| **⚡ High Performance** | Linear scaling with optimized operations for large datasets |
+| **🎨 Interactive Viz** | Beautiful web-based visualization with real-time interaction |
+| **💾 Persistent Storage** | Efficient save/load with data integrity guarantees |
+| **🔍 Smart Queries** | Fast neighbor discovery and relationship exploration |
+| **🛠️ Developer Friendly** | Modern Python with type hints and comprehensive documentation |
 
-:heavy_check_mark: **Vertex and Hyperedge Management**
+</div>
 
-- Add, update, delete, and query vertices and hyperedges with ease.
-- Built-in methods to retrieve neighbors, incident edges, and other relationships.
+### Core Capabilities
 
-:heavy_check_mark: **Neighbor Queries**
-
-- Get neighboring vertices or hyperedges for a given vertex or hyperedge.
-
-:heavy_check_mark: **Persistence**
-
-- Save and load hypergraphs to/from disk using efficient serialization (`pickle`).
-- Ensures data integrity and supports large-scale data storage.
-
-:heavy_check_mark: **Interactive Visualization**
-
-- Built-in web-based visualization tool with `draw()` method.
-- Interactive exploration of hypergraph structure, vertex properties, and relationships.
-- Real-time visualization that reflects the current state of your hypergraph.
-
-:heavy_check_mark: **Customizable and Extensible**
-
-- Built on Python's `dataclasses`, making it easy to extend and customize for specific use cases.
+- **🎯 Hypergraph Management**: Full CRUD operations for vertices and hyperedges
+- **🔗 Relationship Queries**: Efficient neighbor and incident edge discovery  
+- **📊 Data Persistence**: Reliable serialization with pickle support
+- **🎨 Visual Exploration**: Interactive web interface for graph visualization
+- **⚙️ Extensible Design**: Built on dataclasses for easy customization
 
 ---
 
-## :rocket: Installation
+## 🚀 Installation
 
-Hypergraph-DB is a Python library. You can install it directly from PyPI using `pip`.
+### Quick Start with uv (Recommended)
+
+[uv](https://github.com/astral-sh/uv) is the fastest Python package manager - 10-100x faster than pip!
+
+```bash
+# Install uv (one-time setup)
+curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS/Linux
+# or: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"  # Windows
+
+# Install Hypergraph-DB
+uv pip install hypergraph-db
+```
+
+### Traditional Installation
 
 ```bash
 pip install hypergraph-db
 ```
 
-You can also install it by cloning the repository or adding it to your project manually. Ensure you have Python 3.10 or later installed.
+### Development Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/iMoonLab/Hypergraph-DB.git
 cd Hypergraph-DB
 
-# Install dependencies (if any)
-pip install -r requirements.txt
+# Quick setup with uv
+uv sync --extra dev
+
+# Or with traditional tools
+pip install -e ".[dev]"
 ```
+
+### Development Commands
+
+Once you have the project set up, use these convenient commands:
+
+<div align="center">
+
+| 🛠️ **Command** | **Windows** | **Unix/Linux/macOS** |
+|---------------|-------------|----------------------|
+| **Install dev deps** | `dev.bat install-dev` | `make install-dev` |
+| **Run tests** | `dev.bat test` | `make test` |
+| **Format code** | `dev.bat format` | `make format` |
+| **Build docs** | `dev.bat docs` | `make docs` |
+
+</div>
 
 ---
 
-## :checkered_flag: Starting
+## 🚀 Quick Start
 
-This section provides a quick guide to get started with Hypergraph-DB, including iusage, and running basic operations. Below is an example of how to use Hypergraph-DB, based on the provided test cases.
+Ready to build hypergraphs? Here's how to get started with Hypergraph-DB!
 
 #### **1. Create a Hypergraph**
 
@@ -257,45 +306,60 @@ print(hg2.all_v)  # Output: {1, 2, 4, 5, 6, 7, 8, 9, 10}
 print(hg2.all_e)  # Output: {(4, 5, 7, 9), (9, 10), (1, 2, 7), (1, 2), (2, 6, 9), (1, 4, 6), (2, 5, 6)}
 ```
 
-#### **7. Visualization with draw()**
+#### **7. 🎨 Interactive Visualization**
 
-Hypergraph-DB includes a built-in visualization tool that allows you to interactively explore your hypergraph data through a web-based interface.
+Explore your hypergraphs visually with the built-in web-based visualization tool:
 
 ```python
-# Visualize the hypergraph in your browser
+# Launch interactive visualization
 hg.draw()
 ```
 
-The `draw()` function will:
+**✨ Visualization Features:**
+- 🌐 **Real-time Web Interface**: Automatic browser launch with local server
+- 🔍 **Interactive Exploration**: Navigate vertices and hyperedges with ease  
+- 📊 **Rich Information Display**: View properties, degrees, and relationships
+- 🎯 **Smart Sorting**: Vertices ordered by degree for quick insights
+- 📱 **Responsive Design**: Works on desktop and mobile browsers
 
-- Start a local web server (default port: 8080)
-- Automatically open your default web browser
-- Display an interactive visualization of your hypergraph
-- Show vertex degrees, relationships, and hyperedge information
-- Allow you to explore the graph structure visually
+> 💡 **Pro Tip**: The visualization reflects your hypergraph's current state in real-time!
 
-**Features of the visualization:**
+<div align="center">
 
-- **Interactive HyperGraph View**: Navigate through vertices and hyperedges
-- **Vertex Information**: View vertex properties, degrees, and descriptions
-- **Hyperedge Details**: Explore hyperedge relationships and metadata
-- **Degree-based Sorting**: Vertices are sorted by degree for easy identification of important nodes
-- **Real-time Data**: The visualization reflects the current state of your hypergraph
+![Hypergraph Visualization](docs/assets/vis_hg.jpg)
 
----
+*Interactive hypergraph visualization showing vertex relationships and properties*
 
-## :memo: License
-
-Hypergraph-DB is open-source and licensed under the [Apache License 2.0](LICENSE). Feel free to use, modify, and distribute it as per the license terms.
+</div>
 
 ---
 
-## :email: Contact
+## 📄 License
 
-Hypergraph-DB is maintained by [iMoon-Lab](http://moon-lab.tech/), Tsinghua University. If you have any questions, please feel free to contact us via email: [Yifan Feng](mailto:evanfeng97@gmail.com).
+This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
 
-Made with :heart: by <a href="https://github.com/yifanfeng97" target="_blank">Yifan Feng</a>
+## 🤝 Contributing
 
-&#xa0;
+We welcome contributions! Please feel free to submit issues, feature requests, or pull requests.
 
-<a href="#top">Back to top</a>
+## 💬 Contact & Support
+
+<div align="center">
+
+**Maintained by [iMoon-Lab](http://moon-lab.tech/), Tsinghua University**
+
+📧 **Contact**: [Yifan Feng](mailto:evanfeng97@qq.com)
+
+Made with ❤️ by [Yifan Feng](https://github.com/yifanfeng97) and [Xizhe Yu](mailto:yuxizhe2008@gmail.com)
+
+⭐ **Star us on GitHub** • 📖 **Read the Docs** • 🐛 **Report Issues**
+
+</div>
+
+---
+
+<div align="center">
+
+**[⬆️ Back to Top](#-hypergraph-db)**
+
+</div>

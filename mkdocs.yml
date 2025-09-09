@@ -1,0 +1,181 @@
+site_name: Hypergraph-DB
+site_description: A Lightweight Hypergraph Database
+site_author: Yifan Feng
+site_url: https://imoonlab.github.io/Hypergraph-DB
+
+repo_name: iMoonLab/Hypergraph-DB
+repo_url: https://github.com/iMoonLab/Hypergraph-DB
+edit_uri: edit/main/docs/
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Hypergraph Basics: getting-started/hypergraph-basics.md
+  - Visualization Guide:
+    - Overview: visualization/index.md
+    - Basic Operations: visualization/basic-operations.md
+    - Interface Guide: visualization/interface-guide.md
+    - Advanced Customization: visualization/advanced-customization.md
+  - Examples:
+    - Basic Usage: examples/basic-usage.md
+    - Visualization Examples: examples/visualization-examples.md
+    - Advanced Features: examples/advanced.md
+  - About:
+    - Changelog: about/changelog.md
+    - License: about/license.md
+    - Contributing: CONTRIBUTING.md
+  - API Reference:
+    - Overview: api/index.md
+    - HypergraphDB: api/hypergraph.md
+    - BaseHypergraphDB: api/base.md
+    - Visualization: api/visualization.md
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  features:
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search:
+      lang:
+        - en
+        - zh
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: false
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh
+          name: 中文
+          build: true
+          nav_translations:
+            Home: 首页
+            Getting Started: 快速开始
+            Installation: 安装指南
+            Quick Start: 快速开始
+            Hypergraph Basics: 超图基础
+            API Reference: API参考
+            Overview: 概述
+            HypergraphDB: 超图数据库
+            BaseHypergraphDB: 基础超图数据库
+            Visualization: 可视化
+            Visualization Guide: 可视化指南
+            Basic Operations: 基础操作
+            Interface Guide: 界面指南
+            Data Display: 数据展示
+            Advanced Features: 高级功能
+            Customization: 自定义样式
+            Performance: 性能优化
+            Examples: 示例
+            Advanced Customization: 高级定制
+            Examples: 示例
+            Basic Usage: 基础用法
+            Advanced Features: 高级功能
+            About: 关于
+            Changelog: 更新日志
+            License: 许可证
+            Contributing: 贡献指南
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            members_order: source
+            show_source: true
+            show_root_heading: true
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            heading_level: 2
+  - section-index
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:pymdownx.emoji.twemoji
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: iMoonLab
+      repo: Hypergraph-DB
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/iMoonLab/Hypergraph-DB
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/hypergraph-db/
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

@@ -1,3 +1,0 @@
-Preliminaries of Hypergraph
-=================================
-

@@ -141,8 +141,8 @@ class HypergraphViewer:
         
         def run_server():
             handler = lambda *args, **kwargs: CustomHTTPRequestHandler(self.html_content, *args, **kwargs)
-            with socketserver.TCPServer(("127.0.0.1", self.port), handler) as httpd:
-                httpd.serve_forever()
+            self.httpd = socketserver.TCPServer(("127.0.0.1", self.port), handler)
+            self.httpd.serve_forever()
         
         # Start server in new thread
         server_thread = threading.Thread(target=run_server, daemon=True)
@@ -159,9 +159,15 @@ class HypergraphViewer:
             webbrowser.open(url)
         
         return server_thread
+    
+    def stop_server(self):
+        """Stop the HTTP server"""
+        if hasattr(self, 'httpd'):
+            self.httpd.shutdown()
+            self.httpd.server_close()
 
 
-def draw_hypergraph(hypergraph_db: HypergraphDB, port: int = 8080, open_browser: bool = True):
+def draw_hypergraph(hypergraph_db: HypergraphDB, port: int = 8080, open_browser: bool = True, blocking: bool = True):
     """
     Main function to draw hypergraph
     
@@ -169,10 +175,14 @@ def draw_hypergraph(hypergraph_db: HypergraphDB, port: int = 8080, open_browser:
         hypergraph_db: HypergraphDB instance
         port: Server port
         open_browser: Whether to automatically open browser
+        blocking: Whether to block main thread. If False, returns immediately.
     
     Returns:
         HypergraphViewer instance
     """
+    import signal
+    import sys
+    
     print("🎨 Starting hypergraph visualization...")
     print(f"📁 Vertices: {hypergraph_db.num_v}, Hyperedges: {hypergraph_db.num_e}")
     
@@ -181,24 +191,45 @@ def draw_hypergraph(hypergraph_db: HypergraphDB, port: int = 8080, open_browser:
     # Start server
     server_thread = viewer.start_server(open_browser=open_browser)
     
+    if not blocking:
+        print(f"🚀 Server started in non-blocking mode on port {port}")
+        print("💡 Use viewer.stop_server() to stop the server manually")
+        return viewer
+    
+    def signal_handler(sig, frame):
+        print("\n🛑 Server stopping...")
+        viewer.stop_server()
+        sys.exit(0)
+    
+    # Register signal handler for Windows and Unix
+    signal.signal(signal.SIGINT, signal_handler)
+    if hasattr(signal, 'SIGTERM'):
+        signal.signal(signal.SIGTERM, signal_handler)
+    
     try:
         print("⌨️  Press Ctrl+C to stop server")
-        # Keep main thread running
-        server_thread.join()
+        
+        # For Windows compatibility - use a polling loop instead of join()
+        import time
+        while server_thread.is_alive():
+            time.sleep(0.1)
+            
     except KeyboardInterrupt:
         print("\n🛑 Server stopped")
+        viewer.stop_server()
     
     return viewer
 
 
 # Convenience function
-def draw(hypergraph_db: HypergraphDB, port: int = 8899):
+def draw(hypergraph_db: HypergraphDB, port: int = 8899, blocking: bool = True):
     """
     Convenient hypergraph drawing function
     
     Args:
         hypergraph_db: HypergraphDB instance
         port: Server port
+        blocking: Whether to block main thread
     """
-    return draw_hypergraph(hypergraph_db, port, True)
+    return draw_hypergraph(hypergraph_db, port, True, blocking)
 

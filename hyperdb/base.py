@@ -284,19 +284,23 @@ class BaseHypergraphDB:
         """
         raise NotImplementedError
     
-    def draw(self, port: int = 8080, open_browser: bool = True):
+    def draw(self, port: int = 8080, open_browser: bool = True, blocking: bool = True):
         """
         Draw the hypergraph data of the current HyperDB instance
         
         Args:  
             ``port``: Server port number, defaults to 8080  
-            ``open_browser``: Whether to automatically open the browser, defaults to True  
+            ``open_browser``: Whether to automatically open the browser, defaults to True
+            ``blocking``: Whether to block the main thread, defaults to True. Set to False for non-blocking mode.
 
+        Returns:
+            HypergraphViewer instance
         """
         from .draw import draw_hypergraph
         
         return draw_hypergraph(
             hypergraph_db=self,
             port=port,
-            open_browser=open_browser
+            open_browser=open_browser,
+            blocking=blocking
         )

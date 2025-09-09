@@ -1,1 +1,1 @@
-AUTHOR_EMAIL = "evanfeng97@gmail.com"
+AUTHOR_EMAIL = "evanfeng97@qq.com"

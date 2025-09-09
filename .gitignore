@@ -171,3 +171,7 @@ cython_debug/
 #.idea/
 
 hyperdb/templates/data.js
+
+# UV package manager
+.venv/
+uv.lock

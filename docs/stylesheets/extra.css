@@ -1,0 +1,104 @@
+/* Custom CSS for Hypergraph-DB documentation */
+
+/* Brand colors */
+:root {
+  --hgdb-purple: #800080;
+  --hgdb-light-purple: #9C27B0;
+  --hgdb-dark-purple: #4A0048;
+}
+
+/* Custom styling for code blocks */
+.highlight pre {
+  border-left: 4px solid var(--hgdb-purple);
+  padding-left: 1rem;
+}
+
+/* Custom admonition styling */
+.md-typeset .admonition.tip {
+  border-color: var(--hgdb-purple);
+}
+
+.md-typeset .admonition.tip > .admonition-title {
+  background-color: var(--hgdb-light-purple);
+  color: white;
+}
+
+/* Performance table styling */
+.performance-table {
+  overflow-x: auto;
+}
+
+.performance-table table {
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+.performance-table th,
+.performance-table td {
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+}
+
+.performance-table th {
+  background-color: var(--hgdb-light-purple);
+  color: white;
+}
+
+/* API reference improvements */
+.doc-heading {
+  border-bottom: 2px solid var(--hgdb-purple);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Example code improvements */
+.example-section {
+  margin: 2rem 0;
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.example-section h3 {
+  color: var(--hgdb-dark-purple);
+  margin-top: 0;
+}
+
+/* Navigation improvements */
+.md-nav__item--active > .md-nav__link {
+  color: var(--hgdb-purple);
+}
+
+/* Footer customization */
+.md-footer {
+  background-color: var(--hgdb-dark-purple);
+}
+
+/* Logo improvements */
+.md-header__button.md-logo img {
+  filter: brightness(0) invert(1);
+}
+
+/* Dark mode adjustments */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: var(--hgdb-light-purple);
+}
+
+[data-md-color-scheme="slate"] .example-section {
+  background-color: #2d2d2d;
+  border-color: #444;
+}
+
+/* Mobile responsive improvements */
+@media screen and (max-width: 768px) {
+  .performance-table {
+    font-size: 0.8rem;
+  }
+  
+  .example-section {
+    padding: 0.5rem;
+    margin: 1rem 0;
+  }
+}

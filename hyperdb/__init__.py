@@ -3,6 +3,6 @@ from .hypergraph import HypergraphDB
 
 from ._global import AUTHOR_EMAIL
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 __all__ = {"AUTHOR_EMAIL", "BaseHypergraphDB", "HypergraphDB"}

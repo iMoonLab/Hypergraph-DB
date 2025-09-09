@@ -1,7 +1,0 @@
-sphinx==8.1.3
-sphinx-rtd-theme
-sphinx_copybutton
-sphinxcontrib-bibtex
-sphinx_autodoc_typehints
-matplotlib
-scikit-learn
