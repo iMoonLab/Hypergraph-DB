@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/CONTRIBUTING/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/CONTRIBUTING/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/CONTRIBUTING/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/about/changelog/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/about/changelog/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/about/changelog/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/about/license/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/about/license/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/about/license/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/api/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/api/base/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/base/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/base/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/api/hypergraph/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/hypergraph/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/hypergraph/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/api/visualization/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/visualization/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/visualization/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/examples/advanced/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/examples/advanced/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/examples/advanced/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/examples/basic-usage/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/examples/basic-usage/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/examples/basic-usage/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/examples/visualization-examples/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/examples/visualization-examples/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/examples/visualization-examples/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/getting-started/hypergraph-basics/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/getting-started/hypergraph-basics/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/hypergraph-basics/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/getting-started/installation/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/getting-started/installation/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/installation/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/getting-started/quickstart/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/getting-started/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/quickstart/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/visualization/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/visualization/advanced-customization/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/advanced-customization/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/advanced-customization/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/visualization/basic-operations/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/basic-operations/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/basic-operations/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/visualization/interface-guide/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/interface-guide/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/interface-guide/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/CONTRIBUTING/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/CONTRIBUTING/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/CONTRIBUTING/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/about/changelog/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/about/changelog/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/about/changelog/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/about/license/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/about/license/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/about/license/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/api/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/api/base/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/base/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/base/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/api/hypergraph/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/hypergraph/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/hypergraph/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/api/visualization/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/api/visualization/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/api/visualization/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/examples/advanced/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/examples/advanced/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/examples/advanced/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/examples/basic-usage/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/examples/basic-usage/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/examples/basic-usage/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/examples/visualization-examples/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/examples/visualization-examples/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/examples/visualization-examples/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/hypergraph-basics/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/hypergraph-basics/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/getting-started/hypergraph-basics/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/installation/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/installation/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/getting-started/installation/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/quickstart/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/getting-started/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/getting-started/quickstart/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/visualization/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/visualization/advanced-customization/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/advanced-customization/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/advanced-customization/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/visualization/basic-operations/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/basic-operations/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/basic-operations/"/>
+    </url>
+    <url>
+        <loc>https://imoonlab.github.io/Hypergraph-DB/zh/visualization/interface-guide/</loc>
+        <lastmod>2025-09-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://imoonlab.github.io/Hypergraph-DB/zh/visualization/interface-guide/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://imoonlab.github.io/Hypergraph-DB/visualization/interface-guide/"/>
+    </url>
+</urlset>
