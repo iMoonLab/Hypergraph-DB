@@ -22,6 +22,9 @@ jobs:
   docs:
     name: Deploy docs to GitHub Pages
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: Checkout
@@ -40,18 +43,16 @@ jobs:
     - name: Install dependencies
       run: uv sync --group docs
     
-    - name: Configure Git
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    - name: Build documentation
+      run: uv run mkdocs build
     
-    - name: Build and deploy documentation
-      run: uv run mkdocs gh-deploy --force --clean
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
     
-    - name: Upload Pages artifact
+    - name: Upload to GitHub Pages
       uses: actions/upload-pages-artifact@v3
       with:
-        path: site/
+        path: ./site
     
     - name: Deploy to GitHub Pages
       id: deployment
