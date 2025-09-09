@@ -1,7 +1,7 @@
-from pathlib import Path
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Union, Tuple, List, Set, Dict, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 
 @dataclass
@@ -99,14 +99,14 @@ class BaseHypergraphDB:
         Return a list of all hyperedges in the hypergraph.
         """
         raise NotImplementedError
-    
+
     @cached_property
     def num_v(self) -> int:
         r"""
         Return the number of vertices in the hypergraph.
         """
         raise NotImplementedError
-    
+
     @cached_property
     def num_e(self) -> int:
         r"""
@@ -283,13 +283,13 @@ class BaseHypergraphDB:
         Return basic statistics of the hypergraph.
         """
         raise NotImplementedError
-    
+
     def draw(self, port: int = 8080, open_browser: bool = True, blocking: bool = True):
         """
         Draw the hypergraph data of the current HyperDB instance
-        
-        Args:  
-            ``port``: Server port number, defaults to 8080  
+
+        Args:
+            ``port``: Server port number, defaults to 8080
             ``open_browser``: Whether to automatically open the browser, defaults to True
             ``blocking``: Whether to block the main thread, defaults to True. Set to False for non-blocking mode.
 
@@ -297,10 +297,5 @@ class BaseHypergraphDB:
             HypergraphViewer instance
         """
         from .draw import draw_hypergraph
-        
-        return draw_hypergraph(
-            hypergraph_db=self,
-            port=port,
-            open_browser=open_browser,
-            blocking=blocking
-        )
+
+        return draw_hypergraph(hypergraph_db=self, port=port, open_browser=open_browser, blocking=blocking)

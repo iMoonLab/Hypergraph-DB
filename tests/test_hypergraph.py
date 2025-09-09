@@ -1,4 +1,5 @@
 import pytest
+
 from hyperdb import HypergraphDB
 
 
@@ -29,9 +30,7 @@ def test_all_v(hg):
 
 
 def test_all_e(hg):
-    assert hg.all_e == set(
-        [(1, 2), (1, 3), (2, 3, 4), (1, 3, 4, 5), (4, 5, 6), (1, 5, 6)]
-    )
+    assert hg.all_e == set([(1, 2), (1, 3), (2, 3, 4), (1, 3, 4, 5), (4, 5, 6), (1, 5, 6)])
     assert hg.num_e == 6
     hg.remove_v(2)
     assert hg.all_e == set([(1, 3), (3, 4), (1, 3, 4, 5), (4, 5, 6), (1, 5, 6)])

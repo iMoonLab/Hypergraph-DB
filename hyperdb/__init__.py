@@ -1,7 +1,6 @@
+from ._global import AUTHOR_EMAIL
 from .base import BaseHypergraphDB
 from .hypergraph import HypergraphDB
-
-from ._global import AUTHOR_EMAIL
 
 __version__ = "0.2.0"
 
