@@ -4,12 +4,19 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+  id-token: write  # For trusted publishing to PyPI
+
 jobs:
   build-and-publish:
+    name: Build and publish to PyPI
     runs-on: ubuntu-latest
+    environment: release
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Install uv
       uses: astral-sh/setup-uv@v5
@@ -20,18 +27,31 @@ jobs:
       run: uv python install 3.11
     
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync --group test
     
     - name: Run tests
-      run: uv run pytest tests/
+      run: uv run pytest tests/ -v
     
     - name: Build package
       run: uv build
     
-    - name: Publish to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+    - name: Verify package
       run: |
         uv run pip install twine
-        uv run twine upload dist/*
+        uv run twine check dist/*
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        skip-existing: true
+    
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/
+        asset_name: packages
+        asset_content_type: application/zip

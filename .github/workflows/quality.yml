@@ -1,0 +1,84 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Code quality checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+    
+    - name: Set up Python
+      run: uv python install 3.11
+    
+    - name: Install dependencies
+      run: uv sync --group dev
+    
+    - name: Check code formatting with Black
+      run: uv run black --check --diff hyperdb/ tests/
+    
+    - name: Check import sorting with isort
+      run: uv run isort --check-only --diff hyperdb/ tests/
+    
+    - name: Lint with flake8
+      run: uv run flake8 hyperdb/ tests/
+    
+    - name: Type checking with mypy
+      run: uv run mypy hyperdb/ --ignore-missing-imports
+    
+    - name: Security check with bandit
+      run: uv run bandit -r hyperdb/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Upload bandit report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: bandit-report
+        path: bandit-report.json
+
+  dependency-check:
+    name: Dependency vulnerability check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+    
+    - name: Set up Python
+      run: uv python install 3.11
+    
+    - name: Install dependencies
+      run: uv sync --group dev
+    
+    - name: Run safety check
+      run: uv run safety check --json --output safety-report.json
+      continue-on-error: true
+    
+    - name: Upload safety report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: safety-report
+        path: safety-report.json

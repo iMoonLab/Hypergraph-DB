@@ -6,15 +6,23 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Install uv
       uses: astral-sh/setup-uv@v5
@@ -25,23 +33,33 @@ jobs:
       run: uv python install ${{ matrix.python-version }}
     
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync --group test
     
-    - name: Run linting
+    - name: Run linting (Linux only)
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
       run: |
         uv run black --check hyperdb/ tests/
         uv run isort --check-only hyperdb/ tests/
+        uv run flake8 hyperdb/ tests/
     
-    - name: Run tests
-      run: uv run pytest tests/ -v
+    - name: Run tests with coverage
+      run: uv run pytest tests/ -v --cov=hyperdb --cov-report=xml --cov-report=term
     
-    - name: Build package
-      run: uv build
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
 
-  test-windows:
-    runs-on: windows-latest
+  build:
+    name: Build package
+    runs-on: ubuntu-latest
+    needs: test
+    
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Install uv
       uses: astral-sh/setup-uv@v5
@@ -52,10 +70,13 @@ jobs:
       run: uv python install 3.11
     
     - name: Install dependencies
-      run: uv sync --extra dev
-    
-    - name: Run tests
-      run: uv run pytest tests/ -v
+      run: uv sync
     
     - name: Build package
       run: uv build
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: dist/*

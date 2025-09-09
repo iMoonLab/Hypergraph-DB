@@ -3,6 +3,10 @@ name: Deploy Documentation
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
@@ -16,6 +20,7 @@ concurrency:
 
 jobs:
   docs:
+    name: Deploy docs to GitHub Pages
     runs-on: ubuntu-latest
     
     steps:
@@ -40,5 +45,14 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
     
-    - name: Deploy documentation
-      run: uv run mkdocs gh-deploy --force
+    - name: Build and deploy documentation
+      run: uv run mkdocs gh-deploy --force --clean
+    
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: site/
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
