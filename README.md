@@ -183,7 +183,7 @@ git clone https://github.com/iMoonLab/Hypergraph-DB.git
 cd Hypergraph-DB
 
 # Quick setup with uv
-uv sync --extra dev
+uv sync
 
 # Or with traditional tools
 pip install -e ".[dev]"
