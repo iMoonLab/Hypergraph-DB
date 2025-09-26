@@ -31,11 +31,11 @@ Hypergraph-DB is a lightweight, flexible, and Python-based database designed to 
 
 Hypergraph-DB is designed for efficiency. Here are some performance benchmarks:
 
-| Vertices | Hyperedges | Add Vertices | Add Edges | Query Time | Total Time |
-|----------|------------|--------------|-----------|------------|------------|
-| 100,000  | 20,000     | 0.12s        | 0.17s     | 0.04s      | 0.58s      |
-| 500,000  | 100,000    | 0.85s        | 1.07s     | 0.22s      | 3.34s      |
-| 1,000,000| 200,000    | 1.75s        | 1.82s     | 0.51s      | 6.60s      |
+| Vertices  | Hyperedges | Add Vertices | Add Edges | Query Time | Total Time |
+| --------- | ---------- | ------------ | --------- | ---------- | ---------- |
+| 100,000   | 20,000     | 0.12s        | 0.17s     | 0.04s      | 0.58s      |
+| 500,000   | 100,000    | 0.85s        | 1.07s     | 0.22s      | 3.34s      |
+| 1,000,000 | 200,000    | 1.75s        | 1.82s     | 0.51s      | 6.60s      |
 
 ## 🚀 Quick Start
 
@@ -67,13 +67,13 @@ print(f"Vertices: {hg.all_v}")
 print(f"Edges: {hg.all_e}")
 
 # Visualize the hypergraph
-hg.show()  # Opens visualization in web browser
+hg.draw()  # Opens visualization in web browser
 ```
 
 ## 📚 Documentation
 
 - **[Getting Started](getting-started/installation.md)**: Installation and basic setup
-- **[API Reference](api/index.md)**: Complete API documentation  
+- **[API Reference](api/index.md)**: Complete API documentation
 - **[Visualization Guide](visualization/index.md)**: Interactive hypergraph visualization
 - **[Examples](examples/basic-usage.md)**: Practical examples and tutorials
 
