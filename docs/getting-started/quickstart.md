@@ -105,10 +105,11 @@ Visualize your hypergraph in a web browser:
 
 ```python
 # This opens an interactive visualization in your default browser
-hg.show()
+hg.draw()
 ```
 
 The visualization will show:
+
 - **Vertices** as nodes with their attributes
 - **Hyperedges** connecting multiple vertices
 - **Interactive features** for exploring the structure
@@ -122,9 +123,9 @@ from hyperdb import HypergraphDB
 
 def create_research_collaboration_network():
     """Create a hypergraph representing research collaborations."""
-    
+
     hg = HypergraphDB()
-    
+
     # Add researchers
     researchers = {
         1: {"name": "Dr. Alice", "field": "ML", "university": "MIT"},
@@ -133,10 +134,10 @@ def create_research_collaboration_network():
         4: {"name": "Dr. Diana", "field": "Robotics", "university": "Berkeley"},
         5: {"name": "Dr. Eve", "field": "Theory", "university": "Princeton"}
     }
-    
+
     for id, info in researchers.items():
         hg.add_v(id, info)
-    
+
     # Add research papers (as hyperedges connecting collaborators)
     papers = [
         ((1, 2), {"title": "Deep Learning for NLP", "year": 2023, "venue": "ICML"}),
@@ -144,10 +145,10 @@ def create_research_collaboration_network():
         ((2, 3, 4), {"title": "Multimodal AI", "year": 2024, "venue": "NeurIPS"}),
         ((1, 2, 3, 5), {"title": "AI Theory and Practice", "year": 2024, "venue": "JMLR"})
     ]
-    
+
     for authors, paper_info in papers:
         hg.add_e(authors, paper_info)
-    
+
     return hg
 
 # Create the network
@@ -166,7 +167,7 @@ collab_size = research_hg.d_e(largest_collab)
 print(f"Largest collaboration has {collab_size} authors")
 
 # Visualize the research network
-research_hg.show()
+research_hg.draw()
 ```
 
 ## Next Steps
@@ -204,8 +205,4 @@ hg.add_e((1, 2, 3), {"type": "collaboration", "start": "2023-07", "end": "2024-0
 hg.add_e((1, 2, 3), {"type": "project", "weight": 0.8, "importance": "high"})
 ```
 
-!!! tip "Performance Tips"
-    - Use meaningful vertex and edge IDs for easier debugging
-    - Batch operations when adding many vertices/edges
-    - Use `show()` periodically to visualize and understand your data structure
-    - Save your work frequently with `save()` method
+!!! tip "Performance Tips" - Use meaningful vertex and edge IDs for easier debugging - Batch operations when adding many vertices/edges - Use `draw()` periodically to visualize and understand your data structure - Save your work frequently with `save()` method
