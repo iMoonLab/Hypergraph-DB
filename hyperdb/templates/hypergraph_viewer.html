@@ -170,6 +170,7 @@
               if (!edgeSet.has(edgeId)) {
                 edgeSet.add(edgeId);
                 hyperData.edges.push({
+                  id: edgeId,
                   source: a,
                   target: b,
                   ...edge,
@@ -214,6 +215,9 @@
                 key: `bubble-sets-${key}`,
                 type: "bubble-sets",
                 members: nodes,
+                keywords: edge.keywords || "",
+                summary: edge.summary || "",
+                weight: edge.weight || nodes.length,
                 ...createStyle(colors[i % colors.length]),
               });
             }
@@ -239,6 +243,19 @@
                     .join("; ");
                   result += `<p><strong>Description:</strong> ${desc}</p>`;
                 }
+                //展示所有剩余属性
+                Object.entries(item).forEach(([key, value]) => {
+                  if (
+                    key !== "id" &&
+                    key !== "entity_name" &&
+                    key !== "entity_type" &&
+                    key !== "style" &&
+                    key !== "data" &&
+                    key !== "description"
+                  ) {
+                    result += `<p><strong>${key}:</strong> ${value}</p>`;
+                  }
+                });
               });
               return result;
             },
@@ -318,16 +335,6 @@
           graph.on("node:click", (e) => {
             const { itemId } = e;
             console.log("Clicked node:", itemId);
-          });
-
-          // 添加节点悬停事件
-          graph.on("node:pointerenter", (e) => {
-            const { itemId } = e;
-            const node = graph.getNodeData(itemId);
-            if (node && node.data) {
-              // 可以在这里显示tooltip
-              console.log("Node data:", node.data);
-            }
           });
 
           // 添加窗口大小变化监听
@@ -491,12 +498,19 @@
                           )}
                         </div>
                         <div className="text-sm text-gray-600 flex gap-2 items-center">
+                          {vertex.entity_type ? (
                           <div className="flex items-center">
                             <span className="font-medium">Type:</span>
                             <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
-                              {vertex.entity_type || "Unknown"}
+                              {vertex.entity_type}
                             </span>
-                          </div>
+                          </div>) : (
+                          <div className="flex items-center">
+                            <span className="font-medium">ID:</span>
+                            <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
+                              {vertex.id}
+                            </span>
+                          </div>)}
                           <div className="flex items-center">
                             <span className="font-medium">Degree:</span>
                             <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
