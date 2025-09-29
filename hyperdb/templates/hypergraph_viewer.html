@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hypergraph Visualization</title>
-    <script src="https://unpkg.com/@antv/g6@5/dist/g6.min.js"></script>
+    <!-- <script src="https://unpkg.com/@antv/g6@5/dist/g6.min.js"></script> -->
+    <!-- 使用修改过的g6 -->
+    <script src="http://hub.dappwind.com/static/g6.min.js"></script>
+    <!-- <script src="./g6.min.js"></script> -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -70,7 +73,8 @@
         );
         const [visualizationMode, setVisualizationMode] = useState("hyper"); // 'hyper' or 'graph'
         const [graphVersion, setGraphVersion] = useState(0);
-
+        const [hoverHyperedge, setHoverHyperedge] = useState(null);
+        const [hoverNode, setHoverNode] = useState(null);
         // 搜索功能
         useEffect(() => {
           if (!searchTerm.trim()) {
@@ -140,7 +144,7 @@
         const graphDataFormatted = useMemo(() => {
           if (!graphData) return null;
 
-          const hyperData = { nodes: [], edges: [] };
+          const hyperData = { nodes: [], edges: [], hyperEdges: [] };
           const plugins = [];
 
           // 添加顶点
@@ -219,6 +223,12 @@
                 summary: edge.summary || "",
                 weight: edge.weight || nodes.length,
                 ...createStyle(colors[i % colors.length]),
+              });
+
+              hyperData.hyperEdges.push({
+                id: key,
+                ...edge,
+                members: nodes,
               });
             }
           }
@@ -299,6 +309,7 @@
               gravity: 20,
               linkDistance: visualizationMode === "graph" ? 100 : 150,
             },
+            autoFit: "center",
           };
         }, [graphData, selectedVertex, visualizationMode]);
 
@@ -331,10 +342,23 @@
           graphRef.current = graph;
           graphRef.current.render();
 
-          // 添加节点点击事件
-          graph.on("node:click", (e) => {
-            const { itemId } = e;
-            console.log("Clicked node:", itemId);
+          graph.on("pointerover", (e) => {
+            // 如果e.target是hyperEdge，则显示自定义tooltip
+            if (e.targetType === "bubble-sets") {
+              const target = e.target.options;
+              setHoverHyperedge({
+                keywords: target.keywords || "",
+                summary: target.summary || "",
+                members: Array.isArray(target.members) ? target.members : [],
+                weight: target.weight,
+              });
+            }
+            if (e.targetType === "node") {
+              const target = graphDataFormatted.data.nodes.find(
+                (node) => node.id === e.target.id
+              );
+              setHoverNode(target);
+            }
           });
 
           // 添加窗口大小变化监听
@@ -357,12 +381,64 @@
             if (containerRef.current) {
               containerRef.current.innerHTML = "";
             }
+            // 清理右侧悬停信息
+            setHoverHyperedge(null);
           };
         }, [graphDataFormatted, visualizationMode]);
 
+        // 默认选中“最大的”节点与超边（首次或每次数据/模式变化时）
+        useEffect(() => {
+          if (!graphDataFormatted) return;
+
+          const nodes = graphDataFormatted?.data?.nodes || [];
+          if (!hoverNode && nodes.length > 0) {
+            const nodeWithMax = nodes.reduce((best, cur) => {
+              const bestDeg = typeof best.degree === "number" ? best.degree : 0;
+              const curDeg = typeof cur.degree === "number" ? cur.degree : 0;
+              return curDeg > bestDeg ? cur : best;
+            }, nodes[0]);
+            setHoverNode(nodeWithMax);
+          }
+
+          if (visualizationMode === "hyper") {
+            const hyperEdges = graphDataFormatted?.data?.hyperEdges || [];
+            if (!hoverHyperedge && hyperEdges.length > 0) {
+              const hyperWithMax = hyperEdges.reduce((best, cur) => {
+                const bestVal =
+                  typeof best.weight === "number"
+                    ? best.weight
+                    : Array.isArray(best.members)
+                    ? best.members.length
+                    : 0;
+                const curVal =
+                  typeof cur.weight === "number"
+                    ? cur.weight
+                    : Array.isArray(cur.members)
+                    ? cur.members.length
+                    : 0;
+                return curVal > bestVal ? cur : best;
+              }, hyperEdges[0]);
+
+              setHoverHyperedge({
+                keywords: hyperWithMax.keywords || "",
+                summary: hyperWithMax.summary || "",
+                members: Array.isArray(hyperWithMax.members)
+                  ? hyperWithMax.members
+                  : [],
+                weight:
+                  typeof hyperWithMax.weight === "number"
+                    ? hyperWithMax.weight
+                    : Array.isArray(hyperWithMax.members)
+                    ? hyperWithMax.members.length
+                    : undefined,
+              });
+            }
+          }
+        }, [graphDataFormatted, visualizationMode, hoverNode, hoverHyperedge]);
+
         return (
           <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <div className="w-80 h-screen overflow-hidden bg-white/95 backdrop-blur-sm border-r border-gray-200/50 p-6  shadow-xl">
+            <div className="w-80 h-screen overflow-hidden bg-white/95 backdrop-blur-sm border-r border-gray-200/50 p-6  shadow-xl shrink-0">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
                 Hypergraph-DB
               </h2>
@@ -499,18 +575,20 @@
                         </div>
                         <div className="text-sm text-gray-600 flex gap-2 items-center">
                           {vertex.entity_type ? (
-                          <div className="flex items-center">
-                            <span className="font-medium">Type:</span>
-                            <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
-                              {vertex.entity_type}
-                            </span>
-                          </div>) : (
-                          <div className="flex items-center">
-                            <span className="font-medium">ID:</span>
-                            <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
-                              {vertex.id}
-                            </span>
-                          </div>)}
+                            <div className="flex items-center">
+                              <span className="font-medium">Type:</span>
+                              <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
+                                {vertex.entity_type}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center">
+                              <span className="font-medium">ID:</span>
+                              <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
+                                {vertex.id}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex items-center">
                             <span className="font-medium">Degree:</span>
                             <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
@@ -605,10 +683,109 @@
                 )}
 
                 {!loading && (
-                  <div
-                    ref={containerRef}
-                    className="w-full h-[calc(100vh-100px)] rounded-xl"
-                  />
+                  <div className="flex h-[calc(100vh-71px)]">
+                    <div
+                      ref={containerRef}
+                      className="w-full rounded-xl h-full"
+                    />
+                    {visualizationMode === "hyper" && (
+                      <div className="shrink-0 w-72 h-full overflow-y-auto bg-white/95 backdrop-blur-sm border-l border-gray-200/50 p-3 shadow-xl overflow-y-auto">
+                        <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
+                          HyperGraph Detail
+                        </div>
+                        {hoverHyperedge ? (
+                          <div className="text-sm text-gray-700 space-y-3 border-b-2 border-primary-500 pb-6">
+                            <div className="text-base font-semibold text-gray-900">
+                              HyperEdge
+                            </div>
+                            {hoverHyperedge.keywords && (
+                              <div>
+                                <span className="font-medium">Keywords:</span>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {hoverHyperedge.keywords
+                                    .split(",")
+                                    .map((keyword) => (
+                                      <span className=" inline-block p-1 text-xs bg-gray-100 rounded">
+                                        {keyword}
+                                      </span>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                            {hoverHyperedge.summary && (
+                              <div>
+                                <div className="font-medium">Summary:</div>
+                                <div className="mt-1 text-gray-600 bg-gray-50 p-2 rounded">
+                                  {hoverHyperedge.summary}
+                                </div>
+                              </div>
+                            )}
+                            {hoverHyperedge.members?.length > 0 && (
+                              <div>
+                                <div className="font-medium">
+                                  Members ({hoverHyperedge.members.length}):
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {hoverHyperedge.members.map((member) => (
+                                    <span className="p-1 text-xs bg-gray-100 rounded">
+                                      {member}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500"></div>
+                        )}
+                        {hoverNode ? (
+                          <div className="text-sm text-gray-700 space-y-3 mt-4">
+                            <div className="text-base font-semibold text-gray-900">
+                              Node
+                            </div>
+                            {hoverNode.entity_name && (
+                              <div>
+                                <span className="font-medium">Name:</span>
+                                <span className="ml-2">
+                                  {hoverNode.entity_name}
+                                </span>
+                              </div>
+                            )}
+                            {hoverNode.entity_type && (
+                              <div>
+                                <span className="font-medium">Type:</span>
+                                <span className="ml-2 inline-block px-2 py-0.5 bg-gray-100 rounded">
+                                  {hoverNode.entity_type}
+                                </span>
+                              </div>
+                            )}
+                            {hoverNode.description && (
+                              <div>
+                                <span className="font-medium">
+                                  Description:
+                                </span>
+                                <span className="inline-block px-2 py-0.5 text-xs">
+                                  {hoverNode.description}
+                                </span>
+                              </div>
+                            )}
+                            {hoverNode.additional_properties && (
+                              <div>
+                                <span className="font-medium">
+                                  Additional Properties:
+                                </span>
+                                <span className="inline-block px-2 py-0.5 text-xs rounded">
+                                  {hoverNode.additional_properties}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500"></div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

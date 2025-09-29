@@ -171,6 +171,7 @@ cython_debug/
 #.idea/
 
 hyperdb/templates/data.js
+hyperdb/templates/g6.min.js
 
 # UV package manager
 .venv/
