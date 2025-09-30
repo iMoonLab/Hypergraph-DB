@@ -32,8 +32,9 @@
       // 嵌入的数据
       const embeddedData = {{DATA_JSON}};
       // const embeddedData = datas;
-      // 颜色配置
-      const colors = [
+
+      // 常量配置
+      const COLORS = [
         "#F6BD16",
         "#00C9C9",
         "#F08F56",
@@ -46,13 +47,68 @@
         "#c8ff00",
       ];
 
-      const entityTypeColors = {
-        PERSON: "#00C9C9",
-        CONCEPT: "#a68fff",
-        ORGANIZATION: "#F08F56",
-        LOCATION: "#16f69c",
-        EVENT: "#004ac9",
-        PRODUCT: "#f056d1",
+      // 6个预定义颜色，用于循环分配给不同的实体类型
+      const ENTITY_TYPE_COLORS_PALETTE = [
+        "#00C9C9",
+        "#a68fff",
+        "#F08F56",
+        "#0d7c4f",
+        "#004ac9",
+        "#f056d1"
+      ];
+
+      const DEFAULT_NODE_COLOR = "#8b5cf6";
+
+      // 动态生成实体类型颜色映射
+      const generateEntityTypeColors = (vertices) => {
+        const entityTypes = [...new Set(vertices.map(v => v.entity_type).filter(Boolean))];
+        const colorMap = {};
+
+        entityTypes.forEach((entityType, index) => {
+          colorMap[entityType] = ENTITY_TYPE_COLORS_PALETTE[index % ENTITY_TYPE_COLORS_PALETTE.length];
+        });
+
+        return colorMap;
+      };
+      const LAYOUT_THRESHOLD = 100;
+      const EDGE_SEPARATOR = "|#|";
+
+      // 工具函数
+      const calculateMatchScore = (vertex, searchLower) => {
+        let score = 0;
+        if (vertex.id.toString().toLowerCase().includes(searchLower))
+          score += 3;
+        if (vertex.entity_type?.toLowerCase().includes(searchLower)) score += 2;
+        if (vertex.description?.toLowerCase().includes(searchLower)) score += 1;
+        return score;
+      };
+
+      const createBubbleStyle = (baseColor) => ({
+        fill: baseColor,
+        stroke: baseColor,
+        maxRoutingIterations: 100,
+        maxMarchingIterations: 20,
+        pixelGroup: 4,
+        edgeR0: 10,
+        edgeR1: 60,
+        nodeR0: 15,
+        nodeR1: 50,
+        morphBuffer: 10,
+        threshold: 4,
+        memberInfluenceFactor: 1,
+        edgeInfluenceFactor: 4,
+        nonMemberInfluenceFactor: -0.8,
+        virtualEdges: true,
+      });
+
+      const getNodeColor = (node, selectedVertex, entityTypeColors) => {
+        if (node.id === selectedVertex) return "#6d28d9";
+        return entityTypeColors[node.entity_type] || DEFAULT_NODE_COLOR;
+      };
+
+      const formatDescription = (description) => {
+        if (!description) return "";
+        return description.split("<SEP>").join(" ");
       };
 
       function HyperGraphViewer() {
@@ -75,6 +131,11 @@
         const [graphVersion, setGraphVersion] = useState(0);
         const [hoverHyperedge, setHoverHyperedge] = useState(null);
         const [hoverNode, setHoverNode] = useState(null);
+
+        // 生成实体类型颜色映射
+        const entityTypeColors = useMemo(() => {
+          return generateEntityTypeColors(embeddedData.vertices);
+        }, [embeddedData.vertices]);
         // 搜索功能
         useEffect(() => {
           if (!searchTerm.trim()) {
@@ -83,44 +144,18 @@
             return;
           }
 
-          const results = [];
           const searchLower = searchTerm.toLowerCase();
+          const results = embeddedData.vertices
+            .map((vertex) => ({
+              ...vertex,
+              score: calculateMatchScore(vertex, searchLower),
+            }))
+            .filter((item) => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(({ score, ...vertex }) => vertex);
 
-          const filtered = embeddedData.vertices.filter((vertex) => {
-            const matches =
-              vertex.id.toString().toLowerCase().includes(searchLower) ||
-              (vertex.entity_type &&
-                vertex.entity_type.toLowerCase().includes(searchLower)) ||
-              (vertex.description &&
-                vertex.description.toLowerCase().includes(searchLower));
-
-            if (matches) {
-              // 计算匹配度分数，用于排序
-              let score = 0;
-              if (vertex.id.toString().toLowerCase().includes(searchLower))
-                score += 3;
-              if (
-                vertex.entity_type &&
-                vertex.entity_type.toLowerCase().includes(searchLower)
-              )
-                score += 2;
-              if (
-                vertex.description &&
-                vertex.description.toLowerCase().includes(searchLower)
-              )
-                score += 1;
-
-              results.push({ ...vertex, score });
-            }
-            return matches;
-          });
-
-          // 按匹配度分数排序
-          results.sort((a, b) => b.score - a.score);
-          const sortedResults = results.map(({ score, ...vertex }) => vertex);
-
-          setFilteredVertices(sortedResults);
-          setSearchResults(sortedResults);
+          setFilteredVertices(results);
+          setSearchResults(results);
         }, [searchTerm]);
 
         // 加载图数据（从嵌入数据获取）
@@ -144,33 +179,29 @@
         const graphDataFormatted = useMemo(() => {
           if (!graphData) return null;
 
-          const hyperData = { nodes: [], edges: [], hyperEdges: [] };
-          const plugins = [];
-
-          // 添加顶点
-          for (const [key, value] of Object.entries(graphData.vertices)) {
-            hyperData.nodes.push({
+          const hyperData = {
+            nodes: Object.entries(graphData.vertices).map(([key, value]) => ({
               id: key,
               label: key,
               ...value,
-            });
-          }
+            })),
+            edges: [],
+            hyperEdges: [],
+          };
+          const plugins = [];
+          const edgeEntries = Object.entries(graphData.edges);
 
           if (visualizationMode === "graph") {
-            // Graph模式：只显示维度为2的球棍图（仅保留包含2个节点的超边）
-            const edgeKeys = Object.keys(graphData.edges);
-            const edgeSet = new Set(); // 用于去重
+            // Graph模式：只显示维度为2的球棍图
+            const edgeSet = new Set();
 
-            for (let i = 0; i < edgeKeys.length; i++) {
-              const key = edgeKeys[i];
-              const edge = graphData.edges[key];
-              const nodes = key.split("|#|");
-              // 仅保留正好包含2个节点的边，其余丢弃
-              if (nodes.length !== 2) continue;
+            edgeEntries.forEach(([key, edge]) => {
+              const nodes = key.split(EDGE_SEPARATOR);
+              if (nodes.length !== 2) return;
 
-              // 创建边的唯一标识符，确保顺序一致
               const [a, b] = nodes;
               const edgeId = a < b ? `${a}-${b}` : `${b}-${a}`;
+
               if (!edgeSet.has(edgeId)) {
                 edgeSet.add(edgeId);
                 hyperData.edges.push({
@@ -180,42 +211,21 @@
                   ...edge,
                 });
               }
-            }
-            //   过滤nodes不在hyperData.edges中的节点
-            hyperData.nodes = hyperData.nodes.filter((node) => {
-              return hyperData.edges.some((edge) => {
-                return edge.source === node.id || edge.target === node.id;
-              });
-            });
-          } else {
-            // Hyper模式：使用bubble-sets插件
-            // 创建样式函数
-            const createStyle = (baseColor) => ({
-              fill: baseColor,
-              /* stroke: baseColor, */
-              stroke: "#000000",
-              lineWidth: 1,
-              maxRoutingIterations: 100,
-              maxMarchingIterations: 20,
-              pixelGroup: 4,
-              edgeR0: 10,
-              edgeR1: 60,
-              nodeR0: 15,
-              nodeR1: 50,
-              morphBuffer: 10,
-              threshold: 4,
-              memberInfluenceFactor: 1,
-              edgeInfluenceFactor: 4,
-              nonMemberInfluenceFactor: -0.8,
-              virtualEdges: true,
             });
 
-            // 添加超边
-            const edgeKeys = Object.keys(graphData.edges);
-            for (let i = 0; i < edgeKeys.length; i++) {
-              const key = edgeKeys[i];
-              const edge = graphData.edges[key];
-              const nodes = key.split("|#|");
+            // 过滤未连接的节点
+            const connectedNodes = new Set();
+            hyperData.edges.forEach((edge) => {
+              connectedNodes.add(edge.source);
+              connectedNodes.add(edge.target);
+            });
+            hyperData.nodes = hyperData.nodes.filter((node) =>
+              connectedNodes.has(node.id)
+            );
+          } else {
+            // Hyper模式：使用bubble-sets插件
+            edgeEntries.forEach(([key, edge], i) => {
+              const nodes = key.split(EDGE_SEPARATOR);
 
               plugins.push({
                 key: `bubble-sets-${key}`,
@@ -224,7 +234,7 @@
                 keywords: edge.keywords || "",
                 summary: edge.summary || "",
                 weight: edge.weight || nodes.length,
-                ...createStyle(colors[i % colors.length]),
+                ...createBubbleStyle(COLORS[i % COLORS.length]),
               });
 
               hyperData.hyperEdges.push({
@@ -232,88 +242,80 @@
                 ...edge,
                 members: nodes,
               });
-            }
+            });
           }
 
           // 添加tooltip插件
+          const excludedKeys = new Set([
+            "id",
+            "entity_name",
+            "entity_type",
+            "style",
+            "data",
+            "description",
+          ]);
+
           plugins.push({
             type: "tooltip",
             getContent: (e, items) => {
-              let result = "";
-              items.forEach((item) => {
-                result += `<h4>${item.id}</h4>`;
-                if (item.entity_name) {
-                  result += `<p><strong>Name:</strong> ${item.entity_name}</p>`;
-                }
-                if (item.entity_type) {
-                  result += `<p><strong>Type:</strong> ${item.entity_type}</p>`;
-                }
-                if (item.description) {
-                  const desc = item.description
-                    .split("<SEP>")
-                    .slice(0, 2)
-                    .join("; ");
-                  result += `<p><strong>Description:</strong> ${desc}</p>`;
-                }
-                //展示所有剩余属性
-                Object.entries(item).forEach(([key, value]) => {
-                  if (
-                    key !== "id" &&
-                    key !== "entity_name" &&
-                    key !== "entity_type" &&
-                    key !== "style" &&
-                    key !== "data" &&
-                    key !== "description"
-                  ) {
-                    result += `<p><strong>${key}:</strong> ${value}</p>`;
+              return items
+                .map((item) => {
+                  let result = `<h4>${item.id}</h4>`;
+                  if (item.entity_name)
+                    result += `<p><strong>Name:</strong> ${item.entity_name}</p>`;
+                  if (item.entity_type)
+                    result += `<p><strong>Type:</strong> ${item.entity_type}</p>`;
+                  if (item.description) {
+                    result += `<p><strong>Description:</strong> ${formatDescription(
+                      item.description
+                    )}</p>`;
                   }
-                });
-              });
-              return result;
+                  // 展示所有剩余属性
+                  Object.entries(item).forEach(([key, value]) => {
+                    if (!excludedKeys.has(key)) {
+                      result += `<p><strong>${key}:</strong> ${value}</p>`;
+                    }
+                  });
+                  return result;
+                })
+                .join("");
             },
           });
 
+          const isGraph = visualizationMode === "graph";
+
           return {
             data: hyperData,
-            plugins:
-              visualizationMode === "graph"
-                ? [plugins[plugins.length - 1]]
-                : plugins, // graph模式只保留tooltip
+            plugins: isGraph ? [plugins[plugins.length - 1]] : plugins,
             node: {
               palette: { field: "cluster" },
               style: {
-                size: visualizationMode === "graph" ? 20 : 25,
+                size: isGraph ? 20 : 25,
                 labelText: (d) => d.id,
-                fill: (d) => {
-                  if (d.id === selectedVertex) {
-                    return "black";
-                  }
-                  if (d.entity_type) {
-                    return entityTypeColors[d.entity_type] || "#8566CC";
-                  }
-                  return "#8566CC";
-                },
+                fill: (d) => getNodeColor(d, selectedVertex, entityTypeColors),
               },
             },
             edge: {
               style: {
-                size: visualizationMode === "graph" ? 3 : 2,
-                stroke: visualizationMode === "graph" ? "#a68fff" : undefined,
-                lineWidth: visualizationMode === "graph" ? 2 : undefined,
+                size: isGraph ? 3 : 2,
+                stroke: isGraph ? "#a68fff" : undefined,
+                lineWidth: isGraph ? 2 : undefined,
               },
             },
             layout: {
-              type: hyperData.nodes.length > 100 ? "force-atlas2" : "force",
-              clustering: visualizationMode === "graph" ? false : true,
+              type:
+                hyperData.nodes.length > LAYOUT_THRESHOLD
+                  ? "force-atlas2"
+                  : "force",
+              clustering: !isGraph,
               preventOverlap: true,
-              nodeClusterBy:
-                visualizationMode === "graph" ? undefined : "entity_type",
+              nodeClusterBy: isGraph ? undefined : "entity_type",
               gravity: 20,
-              linkDistance: visualizationMode === "graph" ? 100 : 150,
+              linkDistance: isGraph ? 100 : 150,
             },
             autoFit: "center",
           };
-        }, [graphData, selectedVertex, visualizationMode]);
+        }, [graphData, selectedVertex, visualizationMode, entityTypeColors]);
 
         // 初始化图形
         useEffect(() => {
@@ -344,22 +346,42 @@
           graphRef.current = graph;
           graphRef.current.render();
 
-          graph.on("pointerover", (e) => {
-            // 如果e.target是hyperEdge，则显示自定义tooltip
+          graph.on("pointermove", (e) => {
             if (e.targetType === "bubble-sets") {
+              console.log("bubble-sets", e.target);
               const target = e.target.options;
-              setHoverHyperedge({
+              const newHyperedge = {
                 keywords: target.keywords || "",
                 summary: target.summary || "",
                 members: Array.isArray(target.members) ? target.members : [],
                 weight: target.weight,
+              };
+              // 只在数据不同时才更新
+              setHoverHyperedge((prev) => {
+                if (
+                  !prev ||
+                  prev.keywords !== newHyperedge.keywords ||
+                  prev.summary !== newHyperedge.summary ||
+                  prev.weight !== newHyperedge.weight ||
+                  JSON.stringify(prev.members) !==
+                    JSON.stringify(newHyperedge.members)
+                ) {
+                  return newHyperedge;
+                }
+                return prev;
               });
             }
             if (e.targetType === "node") {
               const target = graphDataFormatted.data.nodes.find(
                 (node) => node.id === e.target.id
               );
-              setHoverNode(target);
+              // 只在节点不同时才更新
+              setHoverNode((prev) => {
+                if (!prev || prev.id !== target?.id) {
+                  return target;
+                }
+                return prev;
+              });
             }
           });
 
@@ -388,51 +410,32 @@
           };
         }, [graphDataFormatted, visualizationMode]);
 
-        // 默认选中“最大的”节点与超边（首次或每次数据/模式变化时）
+        // 默认选中"最大的"节点与超边（首次或每次数据/模式变化时）
         useEffect(() => {
           if (!graphDataFormatted) return;
 
-          const nodes = graphDataFormatted?.data?.nodes || [];
+          const nodes = graphDataFormatted.data.nodes;
           if (!hoverNode && nodes.length > 0) {
-            const nodeWithMax = nodes.reduce((best, cur) => {
-              const bestDeg = typeof best.degree === "number" ? best.degree : 0;
-              const curDeg = typeof cur.degree === "number" ? cur.degree : 0;
-              return curDeg > bestDeg ? cur : best;
-            }, nodes[0]);
+            const nodeWithMax = nodes.reduce((best, cur) =>
+              (cur.degree || 0) > (best.degree || 0) ? cur : best
+            );
             setHoverNode(nodeWithMax);
           }
 
           if (visualizationMode === "hyper") {
-            const hyperEdges = graphDataFormatted?.data?.hyperEdges || [];
+            const hyperEdges = graphDataFormatted.data.hyperEdges;
             if (!hoverHyperedge && hyperEdges.length > 0) {
-              const hyperWithMax = hyperEdges.reduce((best, cur) => {
-                const bestVal =
-                  typeof best.weight === "number"
-                    ? best.weight
-                    : Array.isArray(best.members)
-                    ? best.members.length
-                    : 0;
-                const curVal =
-                  typeof cur.weight === "number"
-                    ? cur.weight
-                    : Array.isArray(cur.members)
-                    ? cur.members.length
-                    : 0;
-                return curVal > bestVal ? cur : best;
-              }, hyperEdges[0]);
+              const getWeight = (edge) =>
+                edge.weight || edge.members?.length || 0;
+              const hyperWithMax = hyperEdges.reduce((best, cur) =>
+                getWeight(cur) > getWeight(best) ? cur : best
+              );
 
               setHoverHyperedge({
                 keywords: hyperWithMax.keywords || "",
                 summary: hyperWithMax.summary || "",
-                members: Array.isArray(hyperWithMax.members)
-                  ? hyperWithMax.members
-                  : [],
-                weight:
-                  typeof hyperWithMax.weight === "number"
-                    ? hyperWithMax.weight
-                    : Array.isArray(hyperWithMax.members)
-                    ? hyperWithMax.members.length
-                    : undefined,
+                members: hyperWithMax.members || [],
+                weight: getWeight(hyperWithMax),
               });
             }
           }
@@ -550,21 +553,20 @@
                   </div>
                 ) : (
                   filteredVertices.map((vertex) => {
-                    const isSearchMatch = searchResults.some(
-                      (result) => result.id === vertex.id
-                    );
                     const isSelected = selectedVertex === vertex.id;
+                    const isSearchMatch = searchResults.some(
+                      (r) => r.id === vertex.id
+                    );
+                    const highlightClass = isSelected
+                      ? "bg-primary-50 border-l-4 border-l-primary-500 shadow-md"
+                      : isSearchMatch
+                      ? "bg-yellow-50 border-l-4 border-l-yellow-400 shadow-sm"
+                      : "";
 
                     return (
                       <div
                         key={vertex.id}
-                        className={`p-2 border-b border-gray-100 cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm ${
-                          isSelected
-                            ? "bg-primary-50 border-l-4 border-l-primary-500 shadow-md"
-                            : isSearchMatch
-                            ? "bg-yellow-50 border-l-4 border-l-yellow-400 shadow-sm"
-                            : ""
-                        }`}
+                        className={`p-2 border-b border-gray-100 cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm ${highlightClass}`}
                         onClick={() => setSelectedVertex(vertex.id)}
                       >
                         <div className="font-bold text-gray-800 mb-2 flex items-center">
@@ -576,21 +578,14 @@
                           )}
                         </div>
                         <div className="text-sm text-gray-600 flex gap-2 items-center">
-                          {vertex.entity_type ? (
-                            <div className="flex items-center">
-                              <span className="font-medium">Type:</span>
-                              <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
-                                {vertex.entity_type}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center">
-                              <span className="font-medium">ID:</span>
-                              <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
-                                {vertex.id}
-                              </span>
-                            </div>
-                          )}
+                          <div className="flex items-center">
+                            <span className="font-medium">
+                              {vertex.entity_type ? "Type" : "ID"}:
+                            </span>
+                            <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
+                              {vertex.entity_type || vertex.id}
+                            </span>
+                          </div>
                           <div className="flex items-center">
                             <span className="font-medium">Degree:</span>
                             <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
@@ -600,7 +595,7 @@
                         </div>
                         {vertex.description && (
                           <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                            {vertex.description}
+                            {formatDescription(vertex.description)}
                           </div>
                         )}
                       </div>
@@ -622,26 +617,19 @@
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Mode:</span>
                     <div className="flex space-x-1">
-                      <button
-                        onClick={() => setVisualizationMode("hyper")}
-                        className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
-                          visualizationMode === "hyper"
-                            ? "bg-primary-500 text-white shadow-md"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
-                      >
-                        HyperGraph
-                      </button>
-                      <button
-                        onClick={() => setVisualizationMode("graph")}
-                        className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
-                          visualizationMode === "graph"
-                            ? "bg-primary-500 text-white shadow-md"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
-                      >
-                        Graph
-                      </button>
+                      {["hyper", "graph"].map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => setVisualizationMode(mode)}
+                          className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
+                            visualizationMode === mode
+                              ? "bg-primary-500 text-white shadow-md"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {mode === "hyper" ? "HyperGraph" : "Graph"}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -695,7 +683,7 @@
                         <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
                           HyperGraph Detail
                         </div>
-                        {hoverHyperedge ? (
+                        {hoverHyperedge && (
                           <div className="text-sm text-gray-700 space-y-3 border-b-2 border-primary-500 pb-6">
                             <div className="text-base font-semibold text-gray-900">
                               HyperEdge
@@ -705,9 +693,12 @@
                                 <span className="font-medium">Keywords:</span>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                   {hoverHyperedge.keywords
-                                    .split(",")
-                                    .map((keyword) => (
-                                      <span className=" inline-block p-1 text-xs bg-gray-100 rounded">
+                                    .split(/,|，|、|。|<SEP>/)
+                                    .map((keyword, i) => (
+                                      <span
+                                        key={i}
+                                        className="inline-block p-1 bg-primary-50 rounded"
+                                      >
                                         {keyword}
                                       </span>
                                     ))}
@@ -725,11 +716,14 @@
                             {hoverHyperedge.members?.length > 0 && (
                               <div>
                                 <div className="font-medium">
-                                  Members ({hoverHyperedge.members.length}):
+                                  Nodes ({hoverHyperedge.members.length}):
                                 </div>
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                  {hoverHyperedge.members.map((member) => (
-                                    <span className="p-1 text-xs bg-gray-100 rounded">
+                                  {hoverHyperedge.members.map((member, i) => (
+                                    <span
+                                      key={i}
+                                      className="p-1 bg-primary-50 rounded"
+                                    >
                                       {member}
                                     </span>
                                   ))}
@@ -737,10 +731,8 @@
                               </div>
                             )}
                           </div>
-                        ) : (
-                          <div className="text-sm text-gray-500"></div>
                         )}
-                        {hoverNode ? (
+                        {hoverNode && (
                           <div className="text-sm text-gray-700 space-y-3 mt-4">
                             <div className="text-base font-semibold text-gray-900">
                               Node
@@ -766,8 +758,8 @@
                                 <span className="font-medium">
                                   Description:
                                 </span>
-                                <span className="inline-block px-2 py-0.5 text-xs">
-                                  {hoverNode.description}
+                                <span className="ml-2">
+                                  {formatDescription(hoverNode.description)}
                                 </span>
                               </div>
                             )}
@@ -776,14 +768,14 @@
                                 <span className="font-medium">
                                   Additional Properties:
                                 </span>
-                                <span className="inline-block px-2 py-0.5 text-xs rounded">
-                                  {hoverNode.additional_properties}
+                                <span className="ml-2">
+                                  {formatDescription(
+                                    hoverNode.additional_properties
+                                  )}
                                 </span>
                               </div>
                             )}
                           </div>
-                        ) : (
-                          <div className="text-sm text-gray-500"></div>
                         )}
                       </div>
                     )}
