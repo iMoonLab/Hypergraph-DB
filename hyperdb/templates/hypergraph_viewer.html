@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hypergraph Visualization</title>
     <!-- <script src="https://unpkg.com/@antv/g6@5/dist/g6.min.js"></script> -->
-    <!-- 使用修改过的g6 -->
+    <!-- Using modified g6 -->
     <script src="http://hub.dappwind.com/static/g6.min.js"></script>
     <!-- <script src="./g6.min.js"></script> -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-    <!-- <script src="./data.js"></script> -->
+    <script src="./data.js"></script>
     <style type="text/tailwindcss">
       @theme {
         --color-primary-50: #faf5ff;
@@ -29,11 +29,15 @@
       const { useState, useEffect, useMemo, useRef } = React;
       const { Graph } = window.G6;
 
-      // 嵌入的数据
-      const embeddedData = {{DATA_JSON}};
-      // const embeddedData = datas;
+      // API base path
+      const API_BASE = window.location.origin;
 
-      // 常量配置
+      // Local data testing helper
+      // To validate with local data:
+      // 2) Set USE_LOCAL_DATA to true below
+      const USE_LOCAL_DATA = true; // default off
+
+      // Configuration constants
       const COLORS = [
         "#F6BD16",
         "#00C9C9",
@@ -47,25 +51,30 @@
         "#c8ff00",
       ];
 
-      // 6个预定义颜色，用于循环分配给不同的实体类型
+      // 6 predefined colors, cycled for different entity types
       const ENTITY_TYPE_COLORS_PALETTE = [
         "#00C9C9",
         "#a68fff",
         "#F08F56",
         "#0d7c4f",
         "#004ac9",
-        "#f056d1"
+        "#f056d1",
       ];
 
       const DEFAULT_NODE_COLOR = "#8b5cf6";
 
-      // 动态生成实体类型颜色映射
+      // Dynamically generate entity type color mapping
       const generateEntityTypeColors = (vertices) => {
-        const entityTypes = [...new Set(vertices.map(v => v.entity_type).filter(Boolean))];
+        const entityTypes = [
+          ...new Set(vertices.map((v) => v.entity_type).filter(Boolean)),
+        ];
         const colorMap = {};
 
         entityTypes.forEach((entityType, index) => {
-          colorMap[entityType] = ENTITY_TYPE_COLORS_PALETTE[index % ENTITY_TYPE_COLORS_PALETTE.length];
+          colorMap[entityType] =
+            ENTITY_TYPE_COLORS_PALETTE[
+              index % ENTITY_TYPE_COLORS_PALETTE.length
+            ];
         });
 
         return colorMap;
@@ -73,16 +82,7 @@
       const LAYOUT_THRESHOLD = 100;
       const EDGE_SEPARATOR = "|#|";
 
-      // 工具函数
-      const calculateMatchScore = (vertex, searchLower) => {
-        let score = 0;
-        if (vertex.id.toString().toLowerCase().includes(searchLower))
-          score += 3;
-        if (vertex.entity_type?.toLowerCase().includes(searchLower)) score += 2;
-        if (vertex.description?.toLowerCase().includes(searchLower)) score += 1;
-        return score;
-      };
-
+      // Utility functions
       const createBubbleStyle = (baseColor) => ({
         fill: baseColor,
         stroke: baseColor,
@@ -91,8 +91,8 @@
         pixelGroup: 4,
         edgeR0: 10,
         edgeR1: 60,
-        nodeR0: 15,
-        nodeR1: 50,
+        nodeR0: 1,
+        nodeR1: 5,
         morphBuffer: 10,
         threshold: 4,
         memberInfluenceFactor: 1,
@@ -111,71 +111,208 @@
         return description.split("<SEP>").join(" ");
       };
 
+      // API call functions
+      const fetchDatabaseInfo = async () => {
+        if (USE_LOCAL_DATA && typeof datas !== "undefined") {
+          return Promise.resolve(datas.database);
+        }
+        const response = await fetch(`${API_BASE}/api/database/info`);
+        return await response.json();
+      };
+
+      const fetchVertices = async (
+        page,
+        pageSize,
+        search,
+        sortBy,
+        sortOrder
+      ) => {
+        if (USE_LOCAL_DATA && typeof datas !== "undefined") {
+          const toLower = (v) => (v ?? "").toString().toLowerCase();
+          let list = Array.isArray(datas.vertices) ? datas.vertices : [];
+
+          if (search) {
+            const q = toLower(search);
+            list = list.filter(
+              (v) =>
+                toLower(v.id).includes(q) ||
+                toLower(v.entity_type).includes(q) ||
+                toLower(v.description).includes(q)
+            );
+          }
+
+          if (sortBy === "degree") {
+            list.sort((a, b) =>
+              sortOrder === "asc"
+                ? (a.degree || 0) - (b.degree || 0)
+                : (b.degree || 0) - (a.degree || 0)
+            );
+          } else if (sortBy === "id") {
+            list.sort((a, b) => {
+              const cmp = String(a.id).localeCompare(String(b.id));
+              return sortOrder === "asc" ? cmp : -cmp;
+            });
+          }
+
+          const total = list.length;
+          const total_pages = Math.max(1, Math.ceil(total / pageSize));
+          const cur = Math.min(Math.max(1, page), total_pages);
+          const start = (cur - 1) * pageSize;
+          const data = list.slice(start, start + pageSize);
+          return Promise.resolve({
+            data,
+            pagination: { page: cur, page_size: pageSize, total, total_pages },
+          });
+        }
+        const params = new URLSearchParams({
+          page: page.toString(),
+          page_size: pageSize.toString(),
+          search: search || "",
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        });
+        const response = await fetch(`${API_BASE}/api/vertices?${params}`);
+        return await response.json();
+      };
+
+      const fetchGraphData = async (vertexId) => {
+        if (USE_LOCAL_DATA && typeof datas !== "undefined") {
+          const entry = datas.graphs[vertexId];
+          if (entry && entry.vertices && entry.edges) {
+            return Promise.resolve({
+              vertices: entry.vertices,
+              edges: entry.edges,
+            });
+          }
+          return Promise.resolve({ vertices: {}, edges: {} });
+        }
+        const params = new URLSearchParams({ vertex_id: vertexId });
+        const response = await fetch(`${API_BASE}/api/graph?${params}`);
+        return await response.json();
+      };
+
       function HyperGraphViewer() {
         const containerRef = useRef(null);
         const graphRef = useRef(null);
-        const [databases, setDatabases] = useState([embeddedData.database]);
-        const [vertices, setVertices] = useState(embeddedData.vertices);
-        const [selectedVertex, setSelectedVertex] = useState(
-          embeddedData.vertices.length > 0 ? embeddedData.vertices[0].id : ""
-        );
+        const searchTimeoutRef = useRef(null);
+
+        const [databaseInfo, setDatabaseInfo] = useState({
+          vertices: 0,
+          edges: 0,
+        });
+        const [vertices, setVertices] = useState([]);
+        const [pagination, setPagination] = useState({
+          page: 1,
+          page_size: 50,
+          total: 0,
+          total_pages: 0,
+        });
+        const [selectedVertex, setSelectedVertex] = useState("");
         const [graphData, setGraphData] = useState(null);
         const [loading, setLoading] = useState(false);
+        const [loadingVertices, setLoadingVertices] = useState(false);
         const [error, setError] = useState("");
         const [searchTerm, setSearchTerm] = useState("");
-        const [searchResults, setSearchResults] = useState([]);
-        const [filteredVertices, setFilteredVertices] = useState(
-          embeddedData.vertices
-        );
-        const [visualizationMode, setVisualizationMode] = useState("hyper"); // 'hyper' or 'graph'
-        const [graphVersion, setGraphVersion] = useState(0);
+        const [sortBy, setSortBy] = useState("degree");
+        const [sortOrder, setSortOrder] = useState("desc");
+        const [visualizationMode, setVisualizationMode] = useState("hyper");
         const [hoverHyperedge, setHoverHyperedge] = useState(null);
         const [hoverNode, setHoverNode] = useState(null);
 
-        // 生成实体类型颜色映射
+        // Generate entity type color mapping
         const entityTypeColors = useMemo(() => {
-          return generateEntityTypeColors(embeddedData.vertices);
-        }, [embeddedData.vertices]);
-        // 搜索功能
+          return generateEntityTypeColors(vertices);
+        }, [vertices]);
+
+        // Load database info
         useEffect(() => {
-          if (!searchTerm.trim()) {
-            setFilteredVertices(embeddedData.vertices);
-            setSearchResults([]);
-            return;
+          fetchDatabaseInfo().then(setDatabaseInfo).catch(console.error);
+        }, []);
+
+        // Load vertices list
+        const loadVertices = async (page, search, sortBy, sortOrder) => {
+          setLoadingVertices(true);
+          try {
+            const result = await fetchVertices(
+              page,
+              pagination.page_size,
+              search,
+              sortBy,
+              sortOrder
+            );
+            setVertices(result.data);
+            setPagination(result.pagination);
+
+            // If no vertex selected and data exists, select the first one
+            if (!selectedVertex && result.data.length > 0) {
+              setSelectedVertex(result.data[0].id);
+            }
+          } catch (err) {
+            console.error("Failed to load vertices:", err);
+          } finally {
+            setLoadingVertices(false);
+          }
+        };
+
+        // Initial load of vertices
+        useEffect(() => {
+          loadVertices(1, "", sortBy, sortOrder);
+        }, []);
+
+        // Search debounce
+        useEffect(() => {
+          if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
           }
 
-          const searchLower = searchTerm.toLowerCase();
-          const results = embeddedData.vertices
-            .map((vertex) => ({
-              ...vertex,
-              score: calculateMatchScore(vertex, searchLower),
-            }))
-            .filter((item) => item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .map(({ score, ...vertex }) => vertex);
+          searchTimeoutRef.current = setTimeout(() => {
+            loadVertices(1, searchTerm, sortBy, sortOrder);
+          }, 300);
 
-          setFilteredVertices(results);
-          setSearchResults(results);
+          return () => {
+            if (searchTimeoutRef.current) {
+              clearTimeout(searchTimeoutRef.current);
+            }
+          };
         }, [searchTerm]);
 
-        // 加载图数据（从嵌入数据获取）
+        // Reload when sort changes
+        useEffect(() => {
+          if (vertices.length > 0) {
+            loadVertices(pagination.page, searchTerm, sortBy, sortOrder);
+          }
+        }, [sortBy, sortOrder]);
+
+        // Load when page changes
+        const handlePageChange = (newPage) => {
+          loadVertices(newPage, searchTerm, sortBy, sortOrder);
+        };
+
+        // Load graph data
         useEffect(() => {
           if (selectedVertex) {
             setLoading(true);
             setError("");
 
-            // 从嵌入数据获取图数据
-            const data = embeddedData.graphs[selectedVertex];
-            if (data) {
-              setGraphData(data);
-            } else {
-              setError("Graph data not found for this vertex");
-            }
-            setLoading(false);
+            fetchGraphData(selectedVertex)
+              .then((data) => {
+                if (data.error) {
+                  setError(data.error);
+                } else {
+                  setGraphData(data);
+                }
+              })
+              .catch((err) => {
+                setError("Failed to load graph data");
+                console.error(err);
+              })
+              .finally(() => {
+                setLoading(false);
+              });
           }
         }, [selectedVertex]);
 
-        // 转换数据为 G6 Graph 格式，根据可视化模式处理
+        // Convert data to G6 Graph format
         const graphDataFormatted = useMemo(() => {
           if (!graphData) return null;
 
@@ -192,7 +329,7 @@
           const edgeEntries = Object.entries(graphData.edges);
 
           if (visualizationMode === "graph") {
-            // Graph模式：只显示维度为2的球棍图
+            // Graph mode: only show dimension 2 ball-and-stick diagram
             const edgeSet = new Set();
 
             edgeEntries.forEach(([key, edge]) => {
@@ -213,7 +350,7 @@
               }
             });
 
-            // 过滤未连接的节点
+            // Filter unconnected nodes
             const connectedNodes = new Set();
             hyperData.edges.forEach((edge) => {
               connectedNodes.add(edge.source);
@@ -223,7 +360,7 @@
               connectedNodes.has(node.id)
             );
           } else {
-            // Hyper模式：使用bubble-sets插件
+            // Hyper mode: use bubble-sets plugin
             edgeEntries.forEach(([key, edge], i) => {
               const nodes = key.split(EDGE_SEPARATOR);
 
@@ -245,7 +382,7 @@
             });
           }
 
-          // 添加tooltip插件
+          // Add tooltip plugin
           const excludedKeys = new Set([
             "id",
             "entity_name",
@@ -270,7 +407,7 @@
                       item.description
                     )}</p>`;
                   }
-                  // 展示所有剩余属性
+                  // Display all remaining properties
                   Object.entries(item).forEach(([key, value]) => {
                     if (!excludedKeys.has(key)) {
                       result += `<p><strong>${key}:</strong> ${value}</p>`;
@@ -317,11 +454,11 @@
           };
         }, [graphData, selectedVertex, visualizationMode, entityTypeColors]);
 
-        // 初始化图形
+        // Initialize graph
         useEffect(() => {
           if (!graphDataFormatted || !containerRef.current) return;
 
-          // 销毁之前的图形实例并清空画布
+          // Destroy previous graph instance and clear canvas
           if (graphRef.current && !graphRef.current.destroyed) {
             graphRef.current.clear();
             if (containerRef.current) {
@@ -348,15 +485,11 @@
 
           graph.on("pointermove", (e) => {
             if (e.targetType === "bubble-sets") {
-              console.log("bubble-sets", e.target);
               const target = e.target.options;
               const newHyperedge = {
-                keywords: target.keywords || "",
-                summary: target.summary || "",
+                ...target,
                 members: Array.isArray(target.members) ? target.members : [],
-                weight: target.weight,
               };
-              // 只在数据不同时才更新
               setHoverHyperedge((prev) => {
                 if (
                   !prev ||
@@ -375,7 +508,6 @@
               const target = graphDataFormatted.data.nodes.find(
                 (node) => node.id === e.target.id
               );
-              // 只在节点不同时才更新
               setHoverNode((prev) => {
                 if (!prev || prev.id !== target?.id) {
                   return target;
@@ -385,7 +517,7 @@
             }
           });
 
-          // 添加窗口大小变化监听
+          // Add window resize listener
           const handleResize = () => {
             if (graphRef.current && containerRef.current) {
               graphRef.current.setSize(
@@ -405,12 +537,11 @@
             if (containerRef.current) {
               containerRef.current.innerHTML = "";
             }
-            // 清理右侧悬停信息
             setHoverHyperedge(null);
           };
         }, [graphDataFormatted, visualizationMode]);
 
-        // 默认选中"最大的"节点与超边（首次或每次数据/模式变化时）
+        // Select the "largest" node and hyperedges by default
         useEffect(() => {
           if (!graphDataFormatted) return;
 
@@ -443,7 +574,7 @@
 
         return (
           <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <div className="w-80 h-screen overflow-hidden bg-white/95 backdrop-blur-sm border-r border-gray-200/50 p-6  shadow-xl shrink-0">
+            <div className="w-80 h-screen overflow-hidden bg-white/95 backdrop-blur-sm border-r border-gray-200/50 p-6 shadow-xl shrink-0 flex flex-col">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
                 Hypergraph-DB
               </h2>
@@ -455,7 +586,7 @@
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-semibold text-gray-700">Vertices:</span>
                   <span className="font-bold text-primary-600">
-                    {embeddedData.database.vertices}
+                    {databaseInfo.vertices}
                   </span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
@@ -463,12 +594,12 @@
                     Hyperedges:
                   </span>
                   <span className="font-bold text-primary-600">
-                    {embeddedData.database.edges}
+                    {databaseInfo.edges}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-700">
-                    Displayed Vertices:
+                    Page Vertices:
                   </span>
                   <span className="font-bold text-primary-600">
                     {vertices.length}
@@ -480,20 +611,14 @@
                 Search & Vertex List
               </div>
 
-              {/* 搜索框 */}
+              {/* Search and Sort */}
               <div className="mb-4">
-                <div className="relative">
+                <div className="relative mb-2">
                   <input
                     type="text"
                     placeholder="Search vertex ID, type or description..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && searchResults.length > 0) {
-                        setSelectedVertex(searchResults[0].id);
-                        e.target.blur();
-                      }
-                    }}
                     className="w-full px-4 py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
                   />
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -532,50 +657,58 @@
                     </button>
                   )}
                 </div>
-                {searchTerm && (
-                  <div className="mt-2 text-sm text-gray-600">
-                    Found {searchResults.length} matching results
-                    {searchResults.length > 0 && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        (Press Enter to select first result)
-                      </span>
-                    )}
-                  </div>
-                )}
+
+                {/* Sort Selection */}
+                <div className="flex gap-2 text-xs text-gray-600">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded"
+                  >
+                    <option value="degree">By Degree</option>
+                    <option value="id">By ID</option>
+                  </select>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded"
+                  >
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                  </select>
+                </div>
+
+                <div className="mt-2 text-sm text-gray-600">
+                  Found {pagination.total} results
+                </div>
               </div>
 
-              <div className="overflow-y-scroll hide-scrollbar h-[50vh] relative border border-gray-200 rounded-xl bg-white shadow-inner">
-                {filteredVertices.length === 0 ? (
+              {/* Vertices List */}
+              <div className="flex-1 overflow-y-scroll hide-scrollbar border border-gray-200 rounded-xl bg-white shadow-inner">
+                {loadingVertices ? (
                   <div className="p-4 text-center text-gray-500">
-                    {searchTerm
-                      ? "No matching vertices found"
-                      : "No vertex data available"}
+                    Loading vertices...
+                  </div>
+                ) : vertices.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No matching vertices found
                   </div>
                 ) : (
-                  filteredVertices.map((vertex) => {
+                  vertices.map((vertex) => {
                     const isSelected = selectedVertex === vertex.id;
-                    const isSearchMatch = searchResults.some(
-                      (r) => r.id === vertex.id
-                    );
-                    const highlightClass = isSelected
-                      ? "bg-primary-50 border-l-4 border-l-primary-500 shadow-md"
-                      : isSearchMatch
-                      ? "bg-yellow-50 border-l-4 border-l-yellow-400 shadow-sm"
-                      : "";
 
                     return (
                       <div
                         key={vertex.id}
-                        className={`p-2 border-b border-gray-100 cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm ${highlightClass}`}
+                        className={`p-2 border-b border-gray-100 cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm ${
+                          isSelected
+                            ? "bg-primary-50 border-l-4 border-l-primary-500 shadow-md"
+                            : ""
+                        }`}
                         onClick={() => setSelectedVertex(vertex.id)}
                       >
                         <div className="font-bold text-gray-800 mb-2 flex items-center">
                           {vertex.id}
-                          {isSearchMatch && (
-                            <span className="ml-2 px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs font-semibold">
-                              Match
-                            </span>
-                          )}
                         </div>
                         <div className="text-sm text-gray-600 flex gap-2 items-center">
                           <div className="flex items-center">
@@ -603,6 +736,29 @@
                   })
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {pagination.total_pages > 1 && (
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                    className="px-3 py-1 bg-primary-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-600"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-gray-600">
+                    {pagination.page} / {pagination.total_pages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page === pagination.total_pages}
+                    className="px-3 py-1 bg-primary-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-600"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 flex flex-col bg-white/10 backdrop-blur-sm">
@@ -613,7 +769,7 @@
                     Visualization {selectedVertex && `- ${selectedVertex}`}
                   </h3>
 
-                  {/* 可视化模式选择器 */}
+                  {/* Visualization Mode Selector */}
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Mode:</span>
                     <div className="flex space-x-1">
@@ -659,7 +815,7 @@
                 )}
 
                 {loading && (
-                  <div className="flex justify-center items-center h-full text-lg text-gray-600">
+                  <div className="absolute inset-0 flex justify-center items-center bg-white/80 backdrop-blur-sm z-50 text-lg text-gray-600">
                     <div className="text-center">
                       <div className="text-2xl mb-4">🔄</div>
                       <div className="font-semibold">
@@ -672,115 +828,111 @@
                   </div>
                 )}
 
-                {!loading && (
-                  <div className="flex h-[calc(100vh-71px)]">
-                    <div
-                      ref={containerRef}
-                      className="w-full rounded-xl h-full"
-                    />
-                    {visualizationMode === "hyper" && (
-                      <div className="shrink-0 w-72 h-full overflow-y-auto bg-white/95 backdrop-blur-sm border-l border-gray-200/50 p-3 shadow-xl overflow-y-auto">
-                        <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
-                          HyperGraph Detail
-                        </div>
-                        {hoverHyperedge && (
-                          <div className="text-sm text-gray-700 space-y-3 border-b-2 border-primary-500 pb-6">
-                            <div className="text-base font-semibold text-gray-900">
-                              HyperEdge
-                            </div>
-                            {hoverHyperedge.keywords && (
-                              <div>
-                                <span className="font-medium">Keywords:</span>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  {hoverHyperedge.keywords
-                                    .split(/,|，|、|。|<SEP>/)
-                                    .map((keyword, i) => (
-                                      <span
-                                        key={i}
-                                        className="inline-block p-1 bg-primary-50 rounded"
-                                      >
-                                        {keyword}
-                                      </span>
-                                    ))}
-                                </div>
-                              </div>
-                            )}
-                            {hoverHyperedge.summary && (
-                              <div>
-                                <div className="font-medium">Summary:</div>
-                                <div className="mt-1 text-gray-600 bg-gray-50 p-2 rounded">
-                                  {hoverHyperedge.summary}
-                                </div>
-                              </div>
-                            )}
-                            {hoverHyperedge.members?.length > 0 && (
-                              <div>
-                                <div className="font-medium">
-                                  Nodes ({hoverHyperedge.members.length}):
-                                </div>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  {hoverHyperedge.members.map((member, i) => (
+                <div className="flex h-[calc(100vh-71px)]">
+                  <div
+                    ref={containerRef}
+                    className="w-full rounded-xl h-full"
+                  />
+                  {visualizationMode === "hyper" && (
+                    <div className="shrink-0 w-72 h-full overflow-y-auto bg-white/95 backdrop-blur-sm border-l border-gray-200/50 p-3 shadow-xl overflow-y-auto">
+                      <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
+                        HyperGraph Detail
+                      </div>
+                      {hoverHyperedge && (
+                        <div className="text-sm text-gray-700 space-y-3 border-b-2 border-primary-500 pb-6">
+                          <div className="text-base font-semibold text-gray-900">
+                            HyperEdge
+                          </div>
+                          {hoverHyperedge.keywords && (
+                            <div>
+                              <span className="font-medium">Keywords:</span>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {hoverHyperedge.keywords
+                                  .split(/,|，|、|。|<SEP>/)
+                                  .map((keyword, i) => (
                                     <span
                                       key={i}
-                                      className="p-1 bg-primary-50 rounded"
+                                      className="inline-block p-1 bg-primary-50 rounded"
                                     >
-                                      {member}
+                                      {keyword}
                                     </span>
                                   ))}
-                                </div>
                               </div>
-                            )}
-                          </div>
-                        )}
-                        {hoverNode && (
-                          <div className="text-sm text-gray-700 space-y-3 mt-4">
-                            <div className="text-base font-semibold text-gray-900">
-                              Node
                             </div>
-                            {hoverNode.entity_name && (
-                              <div>
-                                <span className="font-medium">Name:</span>
-                                <span className="ml-2">
-                                  {hoverNode.entity_name}
-                                </span>
+                          )}
+                          {hoverHyperedge.summary && (
+                            <div>
+                              <div className="font-medium">Summary:</div>
+                              <div className="mt-1 text-gray-600 bg-gray-50 p-2 rounded">
+                                {hoverHyperedge.summary}
                               </div>
-                            )}
-                            {hoverNode.entity_type && (
-                              <div>
-                                <span className="font-medium">Type:</span>
-                                <span className="ml-2 inline-block px-2 py-0.5 bg-gray-100 rounded">
-                                  {hoverNode.entity_type}
-                                </span>
+                            </div>
+                          )}
+                          {hoverHyperedge.members?.length > 0 && (
+                            <div>
+                              <div className="font-medium">
+                                Nodes ({hoverHyperedge.members.length}):
                               </div>
-                            )}
-                            {hoverNode.description && (
-                              <div>
-                                <span className="font-medium">
-                                  Description:
-                                </span>
-                                <span className="ml-2">
-                                  {formatDescription(hoverNode.description)}
-                                </span>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {hoverHyperedge.members.map((member, i) => (
+                                  <span
+                                    key={i}
+                                    className="p-1 bg-primary-50 rounded"
+                                  >
+                                    {member}
+                                  </span>
+                                ))}
                               </div>
-                            )}
-                            {hoverNode.additional_properties && (
-                              <div>
-                                <span className="font-medium">
-                                  Additional Properties:
-                                </span>
-                                <span className="ml-2">
-                                  {formatDescription(
-                                    hoverNode.additional_properties
-                                  )}
-                                </span>
-                              </div>
-                            )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {hoverNode && (
+                        <div className="text-sm text-gray-700 space-y-3 mt-4">
+                          <div className="text-base font-semibold text-gray-900">
+                            Node
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
+                          {hoverNode.entity_name && (
+                            <div>
+                              <span className="font-medium">Name:</span>
+                              <span className="ml-2">
+                                {hoverNode.entity_name}
+                              </span>
+                            </div>
+                          )}
+                          {hoverNode.entity_type && (
+                            <div>
+                              <span className="font-medium">Type:</span>
+                              <span className="ml-2 inline-block px-2 py-0.5 bg-gray-100 rounded">
+                                {hoverNode.entity_type}
+                              </span>
+                            </div>
+                          )}
+                          {hoverNode.description && (
+                            <div>
+                              <span className="font-medium">Description:</span>
+                              <span className="ml-2">
+                                {formatDescription(hoverNode.description)}
+                              </span>
+                            </div>
+                          )}
+                          {hoverNode.additional_properties && (
+                            <div>
+                              <span className="font-medium">
+                                Additional Properties:
+                              </span>
+                              <span className="ml-2">
+                                {formatDescription(
+                                  hoverNode.additional_properties
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
