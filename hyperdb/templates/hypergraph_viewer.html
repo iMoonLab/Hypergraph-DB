@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-    <script src="./data.js"></script>
+    <!-- <script src="./data.js"></script> -->
     <style type="text/tailwindcss">
       @theme {
         --color-primary-50: #faf5ff;
@@ -31,11 +31,6 @@
 
       // API base path
       const API_BASE = window.location.origin;
-
-      // Local data testing helper
-      // To validate with local data:
-      // 2) Set USE_LOCAL_DATA to true below
-      const USE_LOCAL_DATA = true; // default off
 
       // Configuration constants
       const COLORS = [
@@ -113,7 +108,7 @@
 
       // API call functions
       const fetchDatabaseInfo = async () => {
-        if (USE_LOCAL_DATA && typeof datas !== "undefined") {
+        if (typeof datas !== "undefined") {
           return Promise.resolve(datas.database);
         }
         const response = await fetch(`${API_BASE}/api/database/info`);
@@ -127,7 +122,7 @@
         sortBy,
         sortOrder
       ) => {
-        if (USE_LOCAL_DATA && typeof datas !== "undefined") {
+        if (typeof datas !== "undefined") {
           const toLower = (v) => (v ?? "").toString().toLowerCase();
           let list = Array.isArray(datas.vertices) ? datas.vertices : [];
 
@@ -176,7 +171,7 @@
       };
 
       const fetchGraphData = async (vertexId) => {
-        if (USE_LOCAL_DATA && typeof datas !== "undefined") {
+        if (typeof datas !== "undefined") {
           const entry = datas.graphs[vertexId];
           if (entry && entry.vertices && entry.edges) {
             return Promise.resolve({
@@ -360,9 +355,25 @@
               connectedNodes.has(node.id)
             );
           } else {
-            // Hyper mode: use bubble-sets plugin
+            // Hyper mode: render 2-node entries as normal edges, others as bubble-sets
+            const edgeSet = new Set();
             edgeEntries.forEach(([key, edge], i) => {
               const nodes = key.split(EDGE_SEPARATOR);
+
+              if (nodes.length === 2) {
+                const [a, b] = nodes;
+                const edgeId = a < b ? `${a}-${b}` : `${b}-${a}`;
+                if (!edgeSet.has(edgeId)) {
+                  edgeSet.add(edgeId);
+                  hyperData.edges.push({
+                    id: edgeId,
+                    source: a,
+                    target: b,
+                    ...edge,
+                  });
+                }
+                return;
+              }
 
               plugins.push({
                 key: `bubble-sets-${key}`,
@@ -379,6 +390,28 @@
                 ...edge,
                 members: nodes,
               });
+            });
+
+            // Assign cluster by hyperEdges for layout grouping
+            // Pick the heaviest hyperedge containing the node as its primary cluster
+            const nodeIdToCandidateClusters = new Map();
+            hyperData.hyperEdges.forEach((he) => {
+              const weight =
+                he.weight ||
+                (Array.isArray(he.members) ? he.members.length : 1);
+              (he.members || []).forEach((m) => {
+                const list = nodeIdToCandidateClusters.get(m) || [];
+                list.push({ id: he.id, weight });
+                nodeIdToCandidateClusters.set(m, list);
+              });
+            });
+            hyperData.nodes = hyperData.nodes.map((n) => {
+              const candidates = nodeIdToCandidateClusters.get(n.id) || [];
+              if (candidates.length === 0) return n;
+              const primary = candidates.reduce((best, cur) =>
+                cur.weight > best.weight ? cur : best
+              );
+              return { ...n, cluster: primary.id };
             });
           }
 
@@ -427,7 +460,7 @@
             node: {
               palette: { field: "cluster" },
               style: {
-                size: isGraph ? 20 : 25,
+                size: hyperData.nodes.length > LAYOUT_THRESHOLD ? 15 : 20,
                 labelText: (d) => d.id,
                 fill: (d) => getNodeColor(d, selectedVertex, entityTypeColors),
               },
@@ -435,8 +468,8 @@
             edge: {
               style: {
                 size: isGraph ? 3 : 2,
-                stroke: isGraph ? "#a68fff" : undefined,
-                lineWidth: isGraph ? 2 : undefined,
+                stroke: "#a68fff",
+                lineWidth: 1,
               },
             },
             layout: {
@@ -446,7 +479,7 @@
                   : "force",
               clustering: !isGraph,
               preventOverlap: true,
-              nodeClusterBy: isGraph ? undefined : "entity_type",
+              nodeClusterBy: isGraph ? undefined : "cluster",
               gravity: 20,
               linkDistance: isGraph ? 100 : 150,
             },
