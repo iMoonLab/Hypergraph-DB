@@ -6,65 +6,171 @@ import threading
 import webbrowser
 from pathlib import Path
 from typing import Any, Dict
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from .hypergraph import HypergraphDB
 
 
-class HypergraphViewer:
-    """Hypergraph visualization tool"""
+class HypergraphAPIHandler(http.server.BaseHTTPRequestHandler):
+    """HTTP request handler with API endpoints"""
 
-    def __init__(self, hypergraph_db: HypergraphDB, port: int = 8080):
+    def __init__(self, hypergraph_db: HypergraphDB, *args, **kwargs):
         self.hypergraph_db = hypergraph_db
-        self.port = port
-        self.html_content = self._generate_html_with_data()
+        super().__init__(*args, **kwargs)
 
-    def _generate_html_with_data(self):
-        """Generate HTML content with embedded data"""
-        # Get all data
-        database_info = {
+    def log_message(self, format, *args):
+        """Disable default logging"""
+        pass
+
+    def do_GET(self):
+        """Handle GET requests"""
+        parsed_path = urlparse(self.path)
+        path = parsed_path.path
+        query_params = parse_qs(parsed_path.query)
+
+        # CORS headers
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+
+        # Route handling
+        if path == "/" or path == "/index.html":
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(self._get_html_template().encode("utf-8"))
+
+        elif path == "/api/database/info":
+            self.send_header("Content-type", "application/json; charset=utf-8")
+            self.end_headers()
+            response = self._get_database_info()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+
+        elif path == "/api/vertices":
+            self.send_header("Content-type", "application/json; charset=utf-8")
+            self.end_headers()
+
+            # Parse query parameters
+            page = int(query_params.get("page", ["1"])[0])
+            page_size = int(query_params.get("page_size", ["50"])[0])
+            search = query_params.get("search", [""])[0]
+            sort_by = query_params.get("sort_by", ["degree"])[0]
+            sort_order = query_params.get("sort_order", ["desc"])[0]
+
+            response = self._get_vertices(page, page_size, search, sort_by, sort_order)
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+
+        elif path == "/api/graph":
+            self.send_header("Content-type", "application/json; charset=utf-8")
+            self.end_headers()
+
+            vertex_id = query_params.get("vertex_id", [""])[0]
+            if vertex_id:
+                response = self._get_graph_data(vertex_id)
+            else:
+                response = {"error": "vertex_id parameter is required"}
+
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+
+        else:
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"404 Not Found")
+
+    def do_OPTIONS(self):
+        """Handle OPTIONS requests for CORS preflight"""
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def _get_database_info(self) -> Dict[str, Any]:
+        """Get database information"""
+        return {
             "name": "current_hypergraph",
             "vertices": self.hypergraph_db.num_v,
             "edges": self.hypergraph_db.num_e,
         }
 
-        # Get vertex list
-        vertices = list(self.hypergraph_db.all_v)[:100]
-        vertex_data = []
+    def _get_vertices(self, page: int, page_size: int, search: str, sort_by: str, sort_order: str) -> Dict[str, Any]:
+        """Get vertices with pagination and search"""
+        hg = self.hypergraph_db
 
-        for v_id in vertices:
-            v_data = self.hypergraph_db.v(v_id, {})
+        # Get all vertices
+        all_vertices = list(hg.all_v)
+
+        # Prepare vertex data with search scoring
+        vertex_data = []
+        search_lower = search.lower() if search else ""
+
+        for v_id in all_vertices:
+            v_data = hg.v(v_id, {})
+            degree = hg.degree_v(v_id)
+            entity_type = v_data.get("entity_type", "")
+            description = v_data.get("description", "")
+
+            # Calculate search score
+            score = 0
+            if search_lower:
+                if search_lower in str(v_id).lower():
+                    score += 3
+                if search_lower in entity_type.lower():
+                    score += 2
+                if search_lower in description.lower():
+                    score += 1
+
+                # Skip if no match
+                if score == 0:
+                    continue
+
             vertex_data.append(
                 {
                     "id": v_id,
-                    "degree": self.hypergraph_db.degree_v(v_id),
-                    "entity_type": v_data.get("entity_type", ""),
-                    "description": (
-                        v_data.get("description", "")[:100] + "..."
-                        if len(v_data.get("description", "")) > 100
-                        else v_data.get("description", "")
-                    ),
+                    "degree": degree,
+                    "entity_type": entity_type,
+                    "description": (description[:100] + "..." if len(description) > 100 else description),
+                    "score": score,
                 }
             )
 
-        # Sort by degree
-        vertex_data.sort(key=lambda x: x["degree"], reverse=True)
+        # Sort vertices
+        if search_lower:
+            # Sort by search score if searching (no degree filtering)
+            vertex_data.sort(key=lambda x: x["score"], reverse=True)
+        elif sort_by == "degree":
+            # First, separate by degree threshold (degree > 50 goes to the end)
+            vertex_data.sort(key=lambda x: (x["degree"] > 50, -x["degree"] if sort_order == "desc" else x["degree"]))
+        elif sort_by == "id":
+            # First, separate by degree threshold (degree > 50 goes to the end)
+            vertex_data.sort(key=lambda x: (x["degree"] > 50, str(x["id"])), reverse=(sort_order == "desc"))
 
-        # Get graph data for all vertices
-        graph_data = {}
-        for vertex in vertex_data:
-            vertex_id = vertex["id"]
-            graph_data[vertex_id] = self._get_vertex_neighbor_data(self.hypergraph_db, vertex_id)
+        # Remove score from output
+        for v in vertex_data:
+            v.pop("score", None)
 
-        # Embed data into HTML
-        return self._get_html_template(database_info, vertex_data, graph_data)
+        # Pagination
+        total = len(vertex_data)
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_data = vertex_data[start:end]
 
-    def _get_vertex_neighbor_data(self, hypergraph_db: HypergraphDB, vertex_id: str) -> Dict[str, Any]:
-        """Get vertex neighbor data"""
-        hg = hypergraph_db
+        return {
+            "data": paginated_data,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": (total + page_size - 1) // page_size,
+            },
+        }
+
+    def _get_graph_data(self, vertex_id: str) -> Dict[str, Any]:
+        """Get graph data for a vertex"""
+        hg = self.hypergraph_db
 
         if not hg.has_v(vertex_id):
-            raise ValueError(f"Vertex {vertex_id} not found")
+            return {"error": f"Vertex {vertex_id} not found"}
 
         # Get all neighbor hyperedges of the vertex
         neighbor_edges = hg.nbr_e_of_v(vertex_id)
@@ -83,7 +189,8 @@ class HypergraphViewer:
             edges_data[edge_key] = {
                 "keywords": edge_data.get("keywords", ""),
                 "summary": edge_data.get("summary", ""),
-                "weight": len(edge_tuple),  # Hyperedge weight equals the number of vertices it contains
+                "weight": len(edge_tuple),
+                **edge_data,
             }
 
         # Get data for all vertices
@@ -99,13 +206,8 @@ class HypergraphViewer:
 
         return {"vertices": vertices_data, "edges": edges_data}
 
-    def _get_html_template(self, database_info: Dict, vertex_data: list, graph_data: Dict) -> str:
-        """Get HTML template with embedded data"""
-        # Serialize data to JSON string
-        embedded_data = {"database": database_info, "vertices": vertex_data, "graphs": graph_data}
-        data_json = json.dumps(embedded_data, ensure_ascii=False)
-
-        # Read HTML template file
+    def _get_html_template(self) -> str:
+        """Get HTML template without embedded data"""
         template_path = Path(__file__).parent / "templates" / "hypergraph_viewer.html"
 
         try:
@@ -114,31 +216,24 @@ class HypergraphViewer:
         except FileNotFoundError:
             raise FileNotFoundError(f"HTML template file not found: {template_path}")
 
-        # Replace placeholders in template
-        html_content = html_template.replace("{{DATA_JSON}}", data_json)
+        # Replace placeholder with empty object (data will be loaded via API)
+        html_content = html_template.replace("{{DATA_JSON}}", "{}")
 
         return html_content
 
+
+class HypergraphViewer:
+    """Hypergraph visualization tool"""
+
+    def __init__(self, hypergraph_db: HypergraphDB, port: int = 8080):
+        self.hypergraph_db = hypergraph_db
+        self.port = port
+
     def start_server(self, open_browser: bool = True):
-        """Start simple HTTP server"""
-
-        class CustomHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
-            def __init__(self, html_content, *args, **kwargs):
-                self.html_content = html_content
-                super().__init__(*args, **kwargs)
-
-            def do_GET(self):
-                self.send_response(200)
-                self.send_header("Content-type", "text/html; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(self.html_content.encode("utf-8"))
-
-            def log_message(self, format, *args):
-                # Disable log output
-                pass
+        """Start HTTP server with API endpoints"""
 
         def run_server():
-            handler = lambda *args, **kwargs: CustomHTTPRequestHandler(self.html_content, *args, **kwargs)
+            handler = lambda *args, **kwargs: HypergraphAPIHandler(self.hypergraph_db, *args, **kwargs)
             self.httpd = socketserver.TCPServer(("127.0.0.1", self.port), handler)
             self.httpd.serve_forever()
 
