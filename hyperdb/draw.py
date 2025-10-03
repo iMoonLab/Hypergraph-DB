@@ -135,13 +135,15 @@ class HypergraphAPIHandler(http.server.BaseHTTPRequestHandler):
             )
 
         # Sort vertices
-        if sort_by == "degree":
-            vertex_data.sort(key=lambda x: x["degree"], reverse=(sort_order == "desc"))
-        elif sort_by == "id":
-            vertex_data.sort(key=lambda x: str(x["id"]), reverse=(sort_order == "desc"))
-        elif search_lower:
-            # Sort by search score if searching
+        if search_lower:
+            # Sort by search score if searching (no degree filtering)
             vertex_data.sort(key=lambda x: x["score"], reverse=True)
+        elif sort_by == "degree":
+            # First, separate by degree threshold (degree > 50 goes to the end)
+            vertex_data.sort(key=lambda x: (x["degree"] > 50, -x["degree"] if sort_order == "desc" else x["degree"]))
+        elif sort_by == "id":
+            # First, separate by degree threshold (degree > 50 goes to the end)
+            vertex_data.sort(key=lambda x: (x["degree"] > 50, str(x["id"])), reverse=(sort_order == "desc"))
 
         # Remove score from output
         for v in vertex_data:

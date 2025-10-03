@@ -30,7 +30,8 @@
       const { Graph } = window.G6;
 
       // API base path
-      const API_BASE = window.location.origin;
+      // const API_BASE = window.location.origin;
+      const API_BASE = "http://localhost:8080";
 
       // Configuration constants
       const COLORS = [
@@ -239,7 +240,7 @@
             setPagination(result.pagination);
 
             // If no vertex selected and data exists, select the first one
-            if (!selectedVertex && result.data.length > 0) {
+            if (result.data.length > 0) {
               setSelectedVertex(result.data[0].id);
             }
           } catch (err) {
@@ -474,14 +475,12 @@
             },
             layout: {
               type:
-                hyperData.nodes.length > LAYOUT_THRESHOLD
-                  ? "force-atlas2"
-                  : "force",
+                hyperData.nodes.length > LAYOUT_THRESHOLD ? "force" : "force",
               clustering: !isGraph,
               preventOverlap: true,
               nodeClusterBy: isGraph ? undefined : "cluster",
-              gravity: 20,
-              linkDistance: isGraph ? 100 : 150,
+              gravity: 50,
+              linkDistance: 50,
             },
             autoFit: "center",
           };
@@ -615,27 +614,19 @@
               <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
                 Database Information
               </div>
-              <div className="p-4 rounded-xl mb-6 text-sm border">
+              <div className="p-2 rounded-xl mb-6 text-sm border">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-semibold text-gray-700">Vertices:</span>
                   <span className="font-bold text-primary-600">
                     {databaseInfo.vertices}
                   </span>
                 </div>
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-700">
                     Hyperedges:
                   </span>
                   <span className="font-bold text-primary-600">
                     {databaseInfo.edges}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-700">
-                    Page Vertices:
-                  </span>
-                  <span className="font-bold text-primary-600">
-                    {vertices.length}
                   </span>
                 </div>
               </div>
@@ -692,7 +683,7 @@
                 </div>
 
                 {/* Sort Selection */}
-                <div className="flex gap-2 text-xs text-gray-600">
+                {/*<div className="flex gap-2 text-xs text-gray-600">
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
@@ -709,7 +700,7 @@
                     <option value="desc">Descending</option>
                     <option value="asc">Ascending</option>
                   </select>
-                </div>
+                </div>*/}
 
                 <div className="mt-2 text-sm text-gray-600">
                   Found {pagination.total} results
