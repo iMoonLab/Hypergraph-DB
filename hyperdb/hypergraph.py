@@ -1,3 +1,4 @@
+import json
 import pickle as pkl
 from collections import defaultdict
 from collections.abc import Hashable
@@ -336,3 +337,253 @@ class HypergraphDB(BaseHypergraphDB):
         if exclude_self:
             nbrs.remove(v_id)
         return nbrs
+
+    def to_hif(self, file_path: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
+        r"""
+        Export the hypergraph to HIF (Hypergraph Interchange Format) format.
+
+        Args:
+            ``file_path`` (``Union[str, Path]``, optional): If provided, save to file. Otherwise return dict.
+
+        Returns:
+            ``Dict[str, Any]``: HIF format dictionary.
+        """
+        # Build incidences array (required)
+        incidences = []
+        edge_to_id = {}
+
+        # First pass: assign edge IDs
+        for e_tuple in self._e_data.keys():
+            e_data = self._e_data[e_tuple]
+            # Check if edge has an ID/name attribute
+            if "id" in e_data:
+                edge_id = e_data["id"]
+            elif "name" in e_data:
+                edge_id = e_data["name"]
+            else:
+                # Create a unique edge identifier
+                # Use a string representation of sorted vertices
+                edge_id = "_".join(str(v) for v in sorted(e_tuple))
+            edge_to_id[e_tuple] = edge_id
+
+        # Second pass: build incidences
+        for e_tuple in self._e_data.keys():
+            edge_id = edge_to_id[e_tuple]
+            e_data = self._e_data[e_tuple]
+
+            # Extract attrs (all fields except weight)
+            e_attrs = {k: v for k, v in e_data.items() if k != "weight"}
+
+            for v_id in e_tuple:
+                v_data = self._v_data.get(v_id, {})
+                # Extract attrs for incidence (all fields except weight)
+                v_attrs = {k: v for k, v in v_data.items() if k != "weight"}
+
+                incidence = {
+                    "edge": edge_id,
+                    "node": v_id,
+                    "attrs": v_attrs,
+                }
+                # Only include weight if it exists
+                if "weight" in v_data:
+                    incidence["weight"] = v_data["weight"]
+                incidences.append(incidence)
+
+        # Build nodes array (optional)
+        nodes = []
+        for v_id in self._v_data.keys():
+            v_data = self._v_data[v_id]
+            v_attrs = {k: v for k, v in v_data.items() if k != "weight"}
+
+            node = {"node": v_id, "attrs": v_attrs}
+            # Only include weight if it exists
+            if "weight" in v_data:
+                node["weight"] = v_data["weight"]
+            nodes.append(node)
+
+        # Build edges array (optional)
+        edges = []
+        for e_tuple in self._e_data.keys():
+            e_data = self._e_data[e_tuple]
+            edge_id = edge_to_id[e_tuple]
+            e_attrs = {k: v for k, v in e_data.items() if k != "weight"}
+
+            edge = {"edge": edge_id, "attrs": e_attrs}
+            # Only include weight if it exists
+            if "weight" in e_data:
+                edge["weight"] = e_data["weight"]
+            edges.append(edge)
+
+        # Build HIF structure
+        hif_data = {
+            "incidences": incidences,
+            "network-type": "undirected",  # Default to undirected
+        }
+
+        if nodes:
+            hif_data["nodes"] = nodes
+        if edges:
+            hif_data["edges"] = edges
+
+        # Save to file if path provided
+        if file_path is not None:
+            if isinstance(file_path, str):
+                file_path = Path(file_path)
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(hif_data, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                raise IOError(f"Failed to save HIF file: {e}")
+
+        return hif_data
+
+    def save_as_hif(self, file_path: Union[str, Path]) -> bool:
+        r"""
+        Save the hypergraph to HIF format JSON file.
+
+        Args:
+            ``file_path`` (``Union[str, Path]``): The file path to save the HIF file.
+
+        Returns:
+            ``bool``: True if successful, False otherwise.
+        """
+        try:
+            self.to_hif(file_path)
+            return True
+        except Exception:
+            return False
+
+    def from_hif(self, hif_data: Union[str, Path, Dict]) -> bool:
+        r"""
+        Load hypergraph from HIF format data.
+
+        Args:
+            ``hif_data`` (``Union[str, Path, Dict]``): HIF data as dict, file path, or JSON string.
+
+        Returns:
+            ``bool``: True if successful, False otherwise.
+        """
+        try:
+            # Load data if it's a file path or JSON string
+            if isinstance(hif_data, (str, Path)):
+                if isinstance(hif_data, str):
+                    # Check if it's a JSON string or file path
+                    if hif_data.strip().startswith("{"):
+                        data = json.loads(hif_data)
+                    else:
+                        file_path = Path(hif_data)
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                else:
+                    with open(hif_data, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+            elif isinstance(hif_data, dict):
+                data = hif_data
+            else:
+                return False
+
+            # Validate required field
+            if "incidences" not in data:
+                return False
+
+            # Clear existing data
+            self._v_data = {}
+            self._e_data = {}
+            self._v_inci = defaultdict(set)
+            self._clear_cache()
+
+            # Build edge mapping from incidences
+            edge_nodes_map: Dict[str, Set[str]] = {}  # edge_id -> set of nodes
+            edge_attrs_map: Dict[str, Dict[str, Any]] = {}  # edge_id -> attrs
+            node_attrs_map: Dict[str, Dict[str, Any]] = {}  # node_id -> attrs
+
+            # Process incidences
+            for incidence in data["incidences"]:
+                edge_id = incidence["edge"]
+                node_id = incidence["node"]
+
+                # Initialize edge if not seen
+                if edge_id not in edge_nodes_map:
+                    edge_nodes_map[edge_id] = set()
+
+                edge_nodes_map[edge_id].add(node_id)
+
+                # Store node attributes from incidence
+                if "attrs" in incidence:
+                    if node_id not in node_attrs_map:
+                        node_attrs_map[node_id] = {}
+                    node_attrs_map[node_id].update(incidence["attrs"])
+
+            # Process nodes array if present
+            if "nodes" in data:
+                for node in data["nodes"]:
+                    node_id = node["node"]
+                    if node_id not in node_attrs_map:
+                        node_attrs_map[node_id] = {}
+                    if "attrs" in node:
+                        node_attrs_map[node_id].update(node["attrs"])
+                    if "weight" in node:
+                        node_attrs_map[node_id]["weight"] = node["weight"]
+
+            # Process edges array if present
+            if "edges" in data:
+                for edge in data["edges"]:
+                    edge_id = edge["edge"]
+                    if edge_id not in edge_attrs_map:
+                        edge_attrs_map[edge_id] = {}
+                    if "attrs" in edge:
+                        edge_attrs_map[edge_id].update(edge["attrs"])
+                    if "weight" in edge:
+                        edge_attrs_map[edge_id]["weight"] = edge["weight"]
+
+            # Build hypergraph from edge mappings
+            for edge_id, node_set in edge_nodes_map.items():
+                if len(node_set) < 2:
+                    continue  # Skip edges with less than 2 nodes
+
+                # Convert to sorted tuple for edge key
+                e_tuple = tuple(sorted(node_set))
+
+                # Add nodes
+                for node_id in node_set:
+                    if node_id not in self._v_data:
+                        node_data = node_attrs_map.get(node_id, {}).copy()
+                        self._v_data[node_id] = node_data
+                        self._v_inci[node_id] = set()
+
+                # Add edge
+                e_data = edge_attrs_map.get(edge_id, {}).copy()
+                # Store the original HIF edge ID if it's meaningful (not just a generated ID)
+                # Check if edge_id looks like a generated ID (contains underscores and numbers)
+                # If it's a meaningful string (like a paper title), store it as 'id' or 'name'
+                if not (
+                    edge_id.startswith("_")
+                    or "_" in edge_id
+                    and all(c.isdigit() or c == "_" for c in edge_id.replace("_", ""))
+                ):
+                    # It's a meaningful ID, store it
+                    if "id" not in e_data and "name" not in e_data:
+                        e_data["id"] = edge_id
+                self._e_data[e_tuple] = e_data
+
+                # Update incidence mapping
+                for node_id in node_set:
+                    self._v_inci[node_id].add(e_tuple)
+
+            self._clear_cache()
+            return True
+
+        except Exception:
+            return False
+
+    def load_from_hif(self, file_path: Union[str, Path]) -> bool:
+        r"""
+        Load hypergraph from HIF format JSON file.
+
+        Args:
+            ``file_path`` (``Union[str, Path]``): The file path to load the HIF file from.
+
+        Returns:
+            ``bool``: True if successful, False otherwise.
+        """
+        return self.from_hif(file_path)

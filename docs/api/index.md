@@ -62,11 +62,15 @@ The foundational base class that defines the core hypergraph structure and basic
 
 ### Persistence Operations
 
-| Method | Description |
-|--------|-------------|
-| `save(filepath)` | Save hypergraph to file |
-| `load(filepath)` | Load hypergraph from file |
-| `copy()` | Create a deep copy of the hypergraph |
+| Method                    | Description                                        |
+| ------------------------- | -------------------------------------------------- |
+| `save(filepath)`          | Save hypergraph to file                            |
+| `load(filepath)`          | Load hypergraph from file                          |
+| `to_hif()`   | Export to HIF (Hypergraph Interchange Format) JSON |
+| `save_as_hif(filepath)`   | Save hypergraph as HIF format JSON file            |
+| `from_hif(hif_data)`      | Load hypergraph from HIF format data               |
+| `load_from_hif(filepath)` | Load hypergraph from HIF format JSON file          |
+| `copy()`                  | Create a deep copy of the hypergraph               |
 
 ### Visualization
 
@@ -134,6 +138,26 @@ hg.add_e(("person1", "person2", "person3"), {
     "impact_factor": 3.2,
     "citations": 15
 })
+```
+
+### HIF Format Import/Export
+
+Hypergraph-DB supports HIF (Hypergraph Interchange Format) for standardized hypergraph data exchange.
+
+#### Export to HIF Format
+
+```python
+# Export and save to file
+hg.to_hif("my_hypergraph.hif.json")
+
+# Or use save_as_hif method
+hg.save_as_hif("my_hypergraph.hif.json")
+```
+
+#### Import from HIF Format
+
+```python
+hg.load_from_hif("my_hypergraph.hif.json")
 ```
 
 ## Error Handling

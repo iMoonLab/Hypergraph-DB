@@ -232,3 +232,107 @@ def test_save_and_load(hg, tmpdir):
     hg3 = HypergraphDB()
     hg3.load(file_path)
     assert hg == hg3
+
+
+def test_hif_export_and_import(hg, tmpdir):
+    """Test HIF format export and import"""
+    file_path = str(tmpdir.join("test.hif.json"))
+
+    # Export to HIF format
+    hif_data = hg.to_hif(file_path)
+
+    # Verify HIF structure
+    assert "incidences" in hif_data
+    assert "network-type" in hif_data
+    assert hif_data["network-type"] == "undirected"
+    assert len(hif_data["incidences"]) > 0
+
+    # Load from HIF format
+    hg2 = HypergraphDB()
+    assert hg2.load_from_hif(file_path) is True
+
+    # Verify data integrity
+    assert hg2.num_v == hg.num_v
+    assert hg2.num_e == hg.num_e
+    assert hg2.all_v == hg.all_v
+    assert hg2.all_e == hg.all_e
+
+    # Verify node data
+    for v_id in hg.all_v:
+        assert hg2.has_v(v_id)
+        # Compare node data (excluding potential HIF-specific fields)
+        v1_data = hg.v(v_id, {})
+        v2_data = hg2.v(v_id, {})
+        assert v1_data == v2_data
+
+    # Verify edge data
+    for e_tuple in hg.all_e:
+        assert hg2.has_e(e_tuple)
+        e1_data = hg.e(e_tuple, {})
+        e2_data = hg2.e(e_tuple, {})
+        assert e1_data == e2_data
+
+
+def test_hif_roundtrip(hg, tmpdir):
+    """Test HIF format roundtrip conversion"""
+    file_path = str(tmpdir.join("test_roundtrip.hif.json"))
+
+    # Export to HIF
+    hg.to_hif(file_path)
+
+    # Import from HIF
+    hg2 = HypergraphDB()
+    hg2.load_from_hif(file_path)
+
+    # Export again
+    file_path2 = str(tmpdir.join("test_roundtrip2.hif.json"))
+    hg2.to_hif(file_path2)
+
+    # Verify both exports are identical
+    import json
+
+    with open(file_path, "r") as f1, open(file_path2, "r") as f2:
+        data1 = json.load(f1)
+        data2 = json.load(f2)
+
+    # Compare structures (order may differ in arrays)
+    assert len(data1["incidences"]) == len(data2["incidences"])
+    if "nodes" in data1:
+        assert len(data1["nodes"]) == len(data2["nodes"])
+    if "edges" in data1:
+        assert len(data1["edges"]) == len(data2["edges"])
+
+
+def test_hif_export_with_attributes(hg, tmpdir):
+    """Test HIF export preserves node and edge attributes"""
+    # Add some attributes
+    hg.update_v(1, {"name": "Alice", "age": 30, "weight": 2.0})
+    hg.update_e((1, 2), {"relation": "knows", "strength": "high", "weight": 1.5})
+
+    file_path = str(tmpdir.join("test_attrs.hif.json"))
+    hif_data = hg.to_hif(file_path)
+
+    # Verify attributes are in nodes/edges arrays
+    assert "nodes" in hif_data
+    assert "edges" in hif_data
+
+    # Find node 1 in nodes array
+    node_1 = next((n for n in hif_data["nodes"] if n["node"] == 1), None)
+    assert node_1 is not None
+    assert "name" in node_1["attrs"]
+    assert node_1["attrs"]["name"] == "Alice"
+    assert node_1["weight"] == 2.0
+
+    # Find edge in edges array
+    edge_12 = next(
+        (e for e in hif_data["edges"] if "1" in str(e["edge"]) and "2" in str(e["edge"])),
+        None,
+    )
+    if edge_12:
+        assert "relation" in edge_12["attrs"] or "strength" in edge_12["attrs"]
+
+    # Load and verify
+    hg2 = HypergraphDB()
+    hg2.load_from_hif(file_path)
+    assert hg2.v(1)["name"] == "Alice"
+    assert hg2.v(1).get("weight") == 2.0

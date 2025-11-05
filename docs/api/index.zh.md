@@ -39,47 +39,51 @@ class CustomHypergraphDB(BaseHypergraphDB):
 
 ### 基础操作
 
-| 方法 | 描述 | 示例 |
-|------|------|------|
-| `add_v(id, data)` | 添加顶点 | `hg.add_v("A", {"name": "Alice"})` |
-| `add_e(tuple, data)` | 添加超边 | `hg.add_e(("A", "B"), {"type": "friend"})` |
-| `remove_v(id)` | 移除顶点 | `hg.remove_v("A")` |
-| `remove_e(tuple)` | 移除超边 | `hg.remove_e(("A", "B"))` |
-| `v(id)` | 获取顶点数据 | `data = hg.v("A")` |
-| `e(tuple)` | 获取超边数据 | `data = hg.e(("A", "B"))` |
+| 方法                 | 描述         | 示例                                       |
+| -------------------- | ------------ | ------------------------------------------ |
+| `add_v(id, data)`    | 添加顶点     | `hg.add_v("A", {"name": "Alice"})`         |
+| `add_e(tuple, data)` | 添加超边     | `hg.add_e(("A", "B"), {"type": "friend"})` |
+| `remove_v(id)`       | 移除顶点     | `hg.remove_v("A")`                         |
+| `remove_e(tuple)`    | 移除超边     | `hg.remove_e(("A", "B"))`                  |
+| `v(id)`              | 获取顶点数据 | `data = hg.v("A")`                         |
+| `e(tuple)`           | 获取超边数据 | `data = hg.e(("A", "B"))`                  |
 
 ### 查询操作
 
-| 方法 | 描述 | 示例 |
-|------|------|------|
-| `has_v(id)` | 检查顶点是否存在 | `hg.has_v("A")` |
-| `has_e(tuple)` | 检查超边是否存在 | `hg.has_e(("A", "B"))` |
-| `degree_v(id)` | 顶点度数 | `deg = hg.degree_v("A")` |
-| `degree_e(tuple)` | 超边大小 | `size = hg.degree_e(("A", "B"))` |
-| `nbr_v(id)` | 顶点的邻居顶点 | `neighbors = hg.nbr_v("A")` |
-| `nbr_e_of_v(id)` | 顶点的邻居超边 | `edges = hg.nbr_e_of_v("A")` |
-| `nbr_v_of_e(tuple)` | 超边的邻居顶点 | `vertices = hg.nbr_v_of_e(("A", "B"))` |
+| 方法                | 描述             | 示例                                   |
+| ------------------- | ---------------- | -------------------------------------- |
+| `has_v(id)`         | 检查顶点是否存在 | `hg.has_v("A")`                        |
+| `has_e(tuple)`      | 检查超边是否存在 | `hg.has_e(("A", "B"))`                 |
+| `degree_v(id)`      | 顶点度数         | `deg = hg.degree_v("A")`               |
+| `degree_e(tuple)`   | 超边大小         | `size = hg.degree_e(("A", "B"))`       |
+| `nbr_v(id)`         | 顶点的邻居顶点   | `neighbors = hg.nbr_v("A")`            |
+| `nbr_e_of_v(id)`    | 顶点的邻居超边   | `edges = hg.nbr_e_of_v("A")`           |
+| `nbr_v_of_e(tuple)` | 超边的邻居顶点   | `vertices = hg.nbr_v_of_e(("A", "B"))` |
 
 ### 全局属性
 
-| 属性 | 描述 | 示例 |
-|------|------|------|
+| 属性    | 描述     | 示例                  |
+| ------- | -------- | --------------------- |
 | `all_v` | 所有顶点 | `vertices = hg.all_v` |
-| `all_e` | 所有超边 | `edges = hg.all_e` |
-| `num_v` | 顶点数量 | `count = hg.num_v` |
-| `num_e` | 超边数量 | `count = hg.num_e` |
+| `all_e` | 所有超边 | `edges = hg.all_e`    |
+| `num_v` | 顶点数量 | `count = hg.num_v`    |
+| `num_e` | 超边数量 | `count = hg.num_e`    |
 
 ### 持久化操作
 
-| 方法 | 描述 | 示例 |
-|------|------|------|
-| `save(path)` | 保存到文件 | `hg.save("graph.hgdb")` |
-| `load(path)` | 从文件加载 | `hg.load("graph.hgdb")` |
+| 方法                      | 描述                | 示例                                                      |
+| ------------------------- | ------------------- | --------------------------------------------------------- |
+| `save(path)`              | 保存到文件          | `hg.save("graph.hgdb")`                                   |
+| `load(path)`              | 从文件加载          | `hg.load("graph.hgdb")`                                   |
+| `to_hif(filepath=None)`   | 导出为 HIF 格式     | `hif_data = hg.to_hif()` 或 `hg.to_hif("graph.hif.json")` |
+| `save_as_hif(filepath)`   | 保存为 HIF 格式文件 | `hg.save_as_hif("graph.hif.json")`                        |
+| `from_hif(hif_data)`      | 从 HIF 格式数据加载 | `hg.from_hif(hif_data)` 或 `hg.from_hif(json_string)`     |
+| `load_from_hif(filepath)` | 从 HIF 格式文件加载 | `hg.load_from_hif("graph.hif.json")`                      |
 
 ### 可视化
 
-| 方法 | 描述 | 示例 |
-|------|------|------|
+| 方法                       | 描述       | 示例                 |
+| -------------------------- | ---------- | -------------------- |
 | `draw(port, open_browser)` | 启动可视化 | `hg.draw(port=8080)` |
 
 [查看完整可视化 API →](visualization.zh.md)
@@ -144,6 +148,26 @@ updated_user = hg.v("user1")
 updated_edge = hg.e(("user1", "user2"))
 ```
 
+### HIF 格式导入导出
+
+Hypergraph-DB 支持 HIF (Hypergraph Interchange Format) 格式，用于标准化的超图数据交换。
+
+#### 导出到 HIF 格式
+
+```python
+# 导出并保存到文件
+hg.to_hif("my_hypergraph.hif.json")
+
+# 或者使用 save_as_hif 方法
+hg.save_as_hif("my_hypergraph.hif.json")
+```
+
+#### 从 HIF 格式导入
+
+```python
+hg.load_from_hif("my_hypergraph.hif.json")
+```
+
 ## 错误处理
 
 ### 常见异常
@@ -152,16 +176,16 @@ updated_edge = hg.e(("user1", "user2"))
 try:
     # 尝试添加顶点
     hg.add_v("user1", {"name": "张三"})
-    
+
     # 尝试添加超边（顶点必须已存在）
     hg.add_e(("user1", "user999"), {"type": "朋友"})
-    
+
 except AssertionError as e:
     print(f"断言错误: {e}")
-    
+
 except KeyError as e:
     print(f"键错误: {e}")
-    
+
 except Exception as e:
     print(f"其他错误: {e}")
 ```
@@ -199,24 +223,24 @@ from hyperdb import HypergraphDB
 
 class AnalyticsHypergraphDB(HypergraphDB):
     """扩展了分析功能的超图数据库"""
-    
+
     def clustering_coefficient(self, vertex_id: str) -> float:
         """计算顶点的聚类系数"""
         neighbors = self.nbr_v(vertex_id)
         if len(neighbors) < 2:
             return 0.0
-        
+
         # 计算邻居之间的连接
         connections = 0
         total_possible = len(neighbors) * (len(neighbors) - 1) // 2
-        
+
         for edge in self.all_e:
             edge_vertices = self.nbr_v_of_e(edge)
             if len(edge_vertices.intersection(neighbors)) >= 2:
                 connections += 1
-        
+
         return connections / total_possible if total_possible > 0 else 0.0
-    
+
     def k_core_decomposition(self, k: int) -> Set[str]:
         """k-核分解：找出度数至少为k的顶点"""
         return {v for v in self.all_v if self.degree_v(v) >= k}

@@ -304,6 +304,12 @@ hg.save("my_hypergraph.hgdb")
 hg2 = HypergraphDB(storage_file="my_hypergraph.hgdb")
 print(hg2.all_v)  # Output: {1, 2, 4, 5, 6, 7, 8, 9, 10}
 print(hg2.all_e)  # Output: {(4, 5, 7, 9), (9, 10), (1, 2, 7), (1, 2), (2, 6, 9), (1, 4, 6), (2, 5, 6)}
+
+# Or save in HIF format
+hg.save_as_hif("my_hypergraph.hif.json")
+
+# Load the hypergraph from a HIF file
+hg.load_from_hif("my_hypergraph.hif.json")
 ```
 
 #### **7. 🎨 Interactive Visualization**
