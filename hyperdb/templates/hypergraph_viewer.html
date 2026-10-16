@@ -26,7 +26,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-      const { useState, useEffect, useMemo, useRef } = React;
+      const { useState, useEffect, useLayoutEffect, useMemo, useRef } = React;
       const { Graph } = window.G6;
 
       // API base path
@@ -188,6 +188,254 @@
         return await response.json();
       };
 
+      // ------------------------------------------------------------------ i18n
+      // 与管理后台（admin.html）同一套做法，语言选择也共用同一个 localStorage 键
+      const MESSAGES = {
+        en: {
+          pageTitle: "Hypergraph Visualization",
+          databaseInfo: "Database Information",
+          verticesLabel: "Vertices:", hyperedgesLabel: "Hyperedges:", edgesLabel: "Edges:",
+          searchList: "Search & Vertex List",
+          searchPlaceholder: "Search vertex ID, type or description...",
+          found: "Found {n} results", loadingVertices: "Loading vertices...", noMatch: "No matching vertices found",
+          typeLabel: "Type:", idLabel: "ID:", degreeLabel: "Degree:",
+          prev: "Previous", next: "Next",
+          titleHyper: "Hypergraph Visualization", titleGraph: "Graph Visualization",
+          modeLabel: "Mode:", modeHyper: "Hypergraph", modeGraph: "Graph",
+          loadingGraph: "Loading hypergraph data...", loadingHint: "This may take a few seconds",
+          loadFailed: "Failed to load graph data",
+          detail: "Hypergraph Detail", hyperedge: "Hyperedge", edge: "Edge", node: "Node",
+        },
+        zh: {
+          pageTitle: "超图可视化",
+          databaseInfo: "数据库信息",
+          verticesLabel: "实体：", hyperedgesLabel: "超边：", edgesLabel: "边：",
+          searchList: "搜索与实体列表",
+          searchPlaceholder: "搜索实体 ID、类型或描述...",
+          found: "共找到 {n} 个结果", loadingVertices: "加载实体中...", noMatch: "没有匹配的实体",
+          typeLabel: "类型：", idLabel: "ID：", degreeLabel: "度数：",
+          prev: "上一页", next: "下一页",
+          titleHyper: "超图可视化", titleGraph: "图可视化",
+          modeLabel: "模式：", modeHyper: "超图", modeGraph: "图",
+          loadingGraph: "加载超图数据中...", loadingHint: "可能需要几秒钟",
+          loadFailed: "加载图数据失败",
+          detail: "超图详情", hyperedge: "超边", edge: "边", node: "实体",
+        },
+      };
+      const LANG_KEY = "hgdb-admin-lang";
+
+      const detectLang = () => {
+        try {
+          const saved = localStorage.getItem(LANG_KEY);
+          if (saved in MESSAGES) return saved;
+        } catch (e) {}
+        return (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+      };
+      // Set by <HypergraphViewer> on every render, before its children render.
+      let currentLang = "en";
+      function t(key, vars = {}) {
+        // 未收录的键原样返回（如服务端返回的错误信息）
+        const msg = MESSAGES[currentLang][key] ?? MESSAGES.en[key] ?? key;
+        return msg.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+      }
+
+      const EXCLUDED_KEYS = new Set([
+        "id",
+        "label",
+        "style",
+        "data",
+        "weight",
+        "source_id",
+        "cluster",
+      ]);
+
+      // 悬停卡片中超边优先显示的属性、不显示的属性（类型看 type），以及最多显示的属性个数；侧边栏显示全部属性
+      const HYPEREDGE_PRIORITY = ["description", "type", "summary", "members"];
+      const HYPEREDGE_TIP_EXCLUDED = ["keywords"];
+      const HYPEREDGE_FIELD_LIMIT = 5;
+      const TIP_OFFSET = 12;
+      const TIP_MARGIN = 8;
+
+      const PropertyRow = ({ name, value }) => {
+        // Special handling for keywords
+        if (name === "keywords" && typeof value === "string") {
+          return (
+            <div>
+              <span className="font-medium">keywords:</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {value
+                  .split(/,|，|、|。|<SEP>/)
+                  .filter((k) => k.trim())
+                  .map((keyword, i) => (
+                    <span
+                      key={i}
+                      className="inline-block p-1 bg-primary-50 rounded text-xs"
+                    >
+                      {keyword.trim()}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          );
+        }
+
+        // Special handling for members
+        if (Array.isArray(value)) {
+          return (
+            <div>
+              <div className="font-medium">
+                {name} ({value.length}):
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {value.map((member, i) => (
+                  <span key={i} className="p-1 bg-primary-50 rounded text-xs">
+                    {member}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        // Convert value to string for length check
+        const stringValue =
+          typeof value === "object"
+            ? JSON.stringify(value, null, 2)
+            : String(value).replace(/<SEP>/g, " | ");
+
+        // Short values are displayed as tags
+        if (stringValue.length < 20) {
+          return (
+            <div>
+              <span className="font-medium">{name}:</span>
+              <div className="mt-1">
+                <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">
+                  {stringValue}
+                </span>
+              </div>
+            </div>
+          );
+        }
+
+        // Default handling for longer values
+        return (
+          <div>
+            <span className="font-medium">{name}:</span>
+            <div className="mt-1 text-gray-600 bg-gray-100 p-2 rounded text-xs">
+              {stringValue}
+            </div>
+          </div>
+        );
+      };
+
+      // 按属性自动渲染超边 / 顶点；侧边栏与悬停卡片（HoverTip）共用。
+      // priority 中的字段排在最前（默认 description），其余按原顺序；exclude 额外不显示的属性；limit 限制显示的属性个数
+      const PropertyList = ({
+        item,
+        priority = ["description"],
+        exclude = [],
+        limit = Infinity,
+      }) => {
+        const rank = (k) =>
+          priority.includes(k) ? priority.indexOf(k) : priority.length;
+        return Object.entries(item)
+          .filter(
+            ([key, value]) =>
+              value &&
+              !(Array.isArray(value) && value.length === 0) &&
+              !EXCLUDED_KEYS.has(key) &&
+              !exclude.includes(key)
+          )
+          .sort(([a], [b]) => rank(a) - rank(b))
+          .slice(0, limit)
+          .map(([key, value]) => (
+            <PropertyRow key={key} name={key} value={value} />
+          ));
+      };
+
+      // 跟随鼠标的悬停卡片，替代 G6 tooltip 插件：插件把视口坐标与画布尺寸比较来翻转，
+      // 且卡片插在画布容器内，图边缘的卡片会被裁掉。这里挂到 body，默认在指针右下，
+      // 越出视口的一侧翻到指针另一侧，最后夹紧在视口内
+      const HoverTip = ({ title, item, priority, exclude, limit, x, y }) => {
+        const ref = useRef(null);
+        const [pos, setPos] = useState({
+          left: x + TIP_OFFSET,
+          top: y + TIP_OFFSET,
+        });
+
+        useLayoutEffect(() => {
+          const el = ref.current;
+          if (!el) return;
+          const { offsetWidth: w, offsetHeight: h } = el;
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          let left = x + TIP_OFFSET;
+          let top = y + TIP_OFFSET;
+          if (left + w > vw - TIP_MARGIN) left = x - TIP_OFFSET - w;
+          if (top + h > vh - TIP_MARGIN) top = y - TIP_OFFSET - h;
+          left = Math.max(TIP_MARGIN, Math.min(left, vw - w - TIP_MARGIN));
+          top = Math.max(TIP_MARGIN, Math.min(top, vh - h - TIP_MARGIN));
+          setPos((prev) =>
+            prev.left === left && prev.top === top ? prev : { left, top }
+          );
+        }, [item, x, y]);
+
+        return ReactDOM.createPortal(
+          <div
+            ref={ref}
+            className="fixed z-[2000] w-80 overflow-hidden pointer-events-none break-words bg-white/95 border border-gray-200 rounded-md shadow-lg p-3"
+            style={{
+              left: pos.left,
+              top: pos.top,
+              maxHeight: `calc(100vh - ${TIP_MARGIN * 2}px)`,
+            }}
+          >
+            <div className="text-sm text-gray-700 space-y-3">
+              <div className="text-base font-semibold text-gray-900 pb-1 border-b-2 border-primary-500">
+                {t(title)}
+              </div>
+              <PropertyList
+                item={item}
+                priority={priority}
+                exclude={exclude}
+                limit={limit}
+              />
+            </div>
+          </div>,
+          document.body
+        );
+      };
+
+      // 悬停目标 → 悬停卡片内容：顶点 → 顶点属性；连线（2 个顶点的超边）/ 超边轮廓 → 超边属性
+      const tipOf = (e, data) => {
+        if (e.targetType === "node") {
+          const node = data?.data.nodes.find((n) => n.id === e.target.id);
+          return node && { title: "node", item: node };
+        }
+        // 只有 2 个成员的超边显示为“边”
+        const hyperedge = (item) => ({
+          title: item.members.length === 2 ? "edge" : "hyperedge",
+          item,
+          priority: HYPEREDGE_PRIORITY,
+          exclude: HYPEREDGE_TIP_EXCLUDED,
+          limit: HYPEREDGE_FIELD_LIMIT,
+        });
+        if (e.targetType === "edge") {
+          const edge = data?.data.edges.find((d) => d.id === e.target.id);
+          if (!edge) return null;
+          const { source, target, ...rest } = edge;
+          return hyperedge({ ...rest, members: [source, target] });
+        }
+        if (e.targetType === "bubble-sets") {
+          const { edge = {}, members } = e.target.options || {};
+          return hyperedge({
+            ...edge,
+            members: Array.isArray(members) ? members : [],
+          });
+        }
+        return null;
+      };
+
       function HypergraphViewer() {
         const containerRef = useRef(null);
         const graphRef = useRef(null);
@@ -220,6 +468,16 @@
         const [visualizationMode, setVisualizationMode] = useState("hyper");
         const [hoverHyperedge, setHoverHyperedge] = useState(null);
         const [hoverNode, setHoverNode] = useState(null);
+        const [tip, setTip] = useState(null);
+        const [lang, setLang] = useState(detectLang);
+        currentLang = lang;
+        useEffect(() => {
+          document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+          document.title = t("pageTitle");
+          try {
+            localStorage.setItem(LANG_KEY, lang);
+          } catch (e) {}
+        }, [lang]);
 
         // Generate entity type color mapping
         const entityTypeColors = useMemo(() => {
@@ -308,7 +566,8 @@
                 }
               })
               .catch((err) => {
-                setError("Failed to load graph data");
+                // 存翻译键，显示时翻译
+                setError("loadFailed");
                 console.error(err);
               })
               .finally(() => {
@@ -316,16 +575,6 @@
               });
           }
         }, [selectedVertex]);
-
-        const excludedKeys = new Set([
-          "id",
-          "label",
-          "style",
-          "data",
-          "weight",
-          "source_id",
-          "cluster",
-        ]);
 
         // Convert data to G6 Graph format
         const graphDataFormatted = useMemo(() => {
@@ -435,33 +684,11 @@
             });
           }
 
-          // Add tooltip plugin
-
-          plugins.push({
-            type: "tooltip",
-            getContent: (e, items) => {
-              return items
-                .map((item) => {
-                  let result = `<h3><strong>${
-                    item.entity_name || item.id
-                  }</strong></h3>`;
-                  // Display all remaining properties
-                  Object.entries(item).forEach(([key, value]) => {
-                    if (!excludedKeys.has(key)) {
-                      result += `<p><strong>${key}:</strong> ${value}</p>`;
-                    }
-                  });
-                  return result;
-                })
-                .join("");
-            },
-          });
-
           const isGraph = visualizationMode === "graph";
 
           return {
             data: hyperData,
-            plugins: isGraph ? [plugins[plugins.length - 1]] : plugins,
+            plugins: isGraph ? [] : plugins,
             node: {
               palette: { field: "cluster" },
               style: {
@@ -551,6 +778,10 @@
                 return prev;
               });
             }
+
+            // 侧边栏保留最后悬停的超边 / 顶点；悬停卡片只在指针位于元素上时显示
+            const next = e.client ? tipOf(e, graphDataFormatted) : null;
+            setTip(next ? { ...next, x: e.client.x, y: e.client.y } : null);
           });
 
           // Add window resize listener
@@ -574,6 +805,7 @@
               containerRef.current.innerHTML = "";
             }
             setHoverHyperedge(null);
+            setTip(null);
           };
         }, [graphDataFormatted, visualizationMode]);
 
@@ -599,7 +831,7 @@
               );
 
               setHoverHyperedge({
-                keywords: hyperWithMax.keywords || "",
+                ...hyperWithMax,
                 description:
                   hyperWithMax.description || hyperWithMax.summary || "",
                 members: hyperWithMax.members || [],
@@ -617,18 +849,20 @@
               </h2>
 
               <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
-                Database Information
+                {t("databaseInfo")}
               </div>
               <div className="p-2 rounded-xl mb-6 text-sm border">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-gray-700">Vertices:</span>
+                  <span className="font-semibold text-gray-700">
+                    {t("verticesLabel")}
+                  </span>
                   <span className="font-bold text-primary-600">
                     {databaseInfo.vertices}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-700">
-                    Hyperedges:
+                    {t("hyperedgesLabel")}
                   </span>
                   <span className="font-bold text-primary-600">
                     {databaseInfo.edges}
@@ -637,7 +871,7 @@
               </div>
 
               <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
-                Search & Vertex List
+                {t("searchList")}
               </div>
 
               {/* Search and Sort */}
@@ -645,7 +879,7 @@
                 <div className="relative mb-2">
                   <input
                     type="text"
-                    placeholder="Search vertex ID, type or description..."
+                    placeholder={t("searchPlaceholder")}
                     value={searchTerm}
                     onChange={(e) => {
                       initialVertexRef.current = "";
@@ -711,7 +945,7 @@
                 </div>*/}
 
                 <div className="mt-2 text-sm text-gray-600">
-                  Found {pagination.total} results
+                  {t("found", { n: pagination.total })}
                 </div>
               </div>
 
@@ -719,11 +953,11 @@
               <div className="flex-1 overflow-y-scroll hide-scrollbar border border-gray-200 rounded-xl bg-white shadow-inner">
                 {loadingVertices ? (
                   <div className="p-4 text-center text-gray-500">
-                    Loading vertices...
+                    {t("loadingVertices")}
                   </div>
                 ) : vertices.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">
-                    No matching vertices found
+                    {t("noMatch")}
                   </div>
                 ) : (
                   vertices.map((vertex) => {
@@ -748,14 +982,16 @@
                         <div className="text-sm text-gray-600 flex gap-2 items-center">
                           <div className="flex items-center">
                             <span className="font-medium">
-                              {vertex.entity_type ? "Type" : "ID"}:
+                              {vertex.entity_type ? t("typeLabel") : t("idLabel")}
                             </span>
                             <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">
                               {vertex.entity_type || vertex.id}
                             </span>
                           </div>
                           <div className="flex items-center">
-                            <span className="font-medium">Degree:</span>
+                            <span className="font-medium">
+                              {t("degreeLabel")}
+                            </span>
                             <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
                               {vertex.degree}
                             </span>
@@ -780,7 +1016,7 @@
                     disabled={pagination.page === 1}
                     className="px-3 py-1 bg-primary-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-600"
                   >
-                    Previous
+                    {t("prev")}
                   </button>
                   <span className="text-gray-600">
                     {pagination.page} / {pagination.total_pages}
@@ -790,7 +1026,7 @@
                     disabled={pagination.page === pagination.total_pages}
                     className="px-3 py-1 bg-primary-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-600"
                   >
-                    Next
+                    {t("next")}
                   </button>
                 </div>
               )}
@@ -800,13 +1036,13 @@
               <div className="bg-white/95 p-4 border-b border-gray-200/50 flex justify-between items-center shadow-sm">
                 <div className="flex items-center gap-4">
                   <h3 className="text-xl font-semibold text-gray-800 m-0">
-                    {visualizationMode === "hyper" ? "Hypergraph" : "Graph"}{" "}
-                    Visualization {selectedVertex && `- ${selectedVertex}`}
+                    {t(visualizationMode === "hyper" ? "titleHyper" : "titleGraph")}{" "}
+                    {selectedVertex && `- ${selectedVertex}`}
                   </h3>
 
                   {/* Visualization Mode Selector */}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Mode:</span>
+                    <span className="text-sm text-gray-600">{t("modeLabel")}</span>
                     <div className="flex space-x-1">
                       {["hyper", "graph"].map((mode) => (
                         <button
@@ -818,25 +1054,46 @@
                               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                           }`}
                         >
-                          {mode === "hyper" ? "Hypergraph" : "Graph"}
+                          {t(mode === "hyper" ? "modeHyper" : "modeGraph")}
                         </button>
                       ))}
                     </div>
                   </div>
                 </div>
 
+                <div className="flex items-center gap-3">
                 {graphData && (
                   <div className="bg-white px-4 py-2 text-sm text-gray-600 rounded-lg shadow-sm border border-gray-200">
-                    <span className="font-semibold">Vertices:</span>{" "}
+                    <span className="font-semibold">{t("verticesLabel")}</span>{" "}
                     {Object.keys(graphData.vertices).length} |
                     <span className="font-semibold ml-1">
-                      {visualizationMode === "hyper" ? "Hyperedges:" : "Edges:"}
+                      {t(visualizationMode === "hyper" ? "hyperedgesLabel" : "edgesLabel")}
                     </span>{" "}
                     {visualizationMode === "hyper"
                       ? Object.keys(graphData.edges).length
                       : graphDataFormatted?.data?.edges?.length || 0}
                   </div>
                 )}
+                  <div
+                    className="flex rounded-lg border border-gray-200 overflow-hidden text-xs"
+                    role="group"
+                    aria-label="Language"
+                  >
+                    {[["en", "EN"], ["zh", "中文"]].map(([code, name]) => (
+                      <button
+                        key={code}
+                        onClick={() => setLang(code)}
+                        className={`px-2.5 py-1 ${
+                          lang === code
+                            ? "bg-primary-500 text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="flex-1 relative bg-white">
@@ -844,7 +1101,7 @@
                   <div className="bg-red-50 text-red-700 p-4 m-4 rounded-lg border-l-4 border-red-500 shadow-sm">
                     <div className="flex items-center">
                       <span className="text-xl mr-2">⚠️</span>
-                      <span className="font-medium">{error}</span>
+                      <span className="font-medium">{t(error)}</span>
                     </div>
                   </div>
                 )}
@@ -854,10 +1111,10 @@
                     <div className="text-center">
                       <div className="text-2xl mb-4">🔄</div>
                       <div className="font-semibold">
-                        Loading hypergraph data...
+                        {t("loadingGraph")}
                       </div>
                       <div className="text-sm mt-2 text-gray-500">
-                        This may take a few seconds
+                        {t("loadingHint")}
                       </div>
                     </div>
                   </div>
@@ -867,154 +1124,42 @@
                   <div
                     ref={containerRef}
                     className="w-full rounded-xl h-full"
+                    onMouseLeave={() => setTip(null)}
                   />
+                  {tip && (
+                    <HoverTip
+                      title={tip.title}
+                      item={tip.item}
+                      priority={tip.priority}
+                      exclude={tip.exclude}
+                      limit={tip.limit}
+                      x={tip.x}
+                      y={tip.y}
+                    />
+                  )}
                   {visualizationMode === "hyper" && (
                     <div className="shrink-0 w-72 h-full overflow-y-auto bg-white/95 backdrop-blur-sm border-l border-gray-200/50 p-3 shadow-xl overflow-y-auto">
                       <div className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-primary-500">
-                        Hypergraph Detail
+                        {t("detail")}
                       </div>
                       {hoverHyperedge && (
                         <div className="text-sm text-gray-700 space-y-3 border-b-2 border-primary-500 pb-6">
                           <div className="text-base font-semibold text-gray-900">
-                            Hyperedge
+                            {t(
+                              hoverHyperedge.members?.length === 2
+                                ? "edge"
+                                : "hyperedge"
+                            )}
                           </div>
-                          {Object.entries(hoverHyperedge).map(
-                            ([key, value]) => {
-                              // Skip empty values
-                              if (
-                                !value ||
-                                (Array.isArray(value) && value.length === 0) ||
-                                excludedKeys.has(key)
-                              ) {
-                                return null;
-                              }
-
-                              // Special handling for keywords
-                              if (
-                                key === "keywords" &&
-                                typeof value === "string"
-                              ) {
-                                return (
-                                  <div key={key}>
-                                    <span className="font-medium">
-                                      keywords:
-                                    </span>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                      {value
-                                        .split(/,|，|、|。|<SEP>/)
-                                        .filter((k) => k.trim())
-                                        .map((keyword, i) => (
-                                          <span
-                                            key={i}
-                                            className="inline-block p-1 bg-primary-50 rounded text-xs"
-                                          >
-                                            {keyword.trim()}
-                                          </span>
-                                        ))}
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              // Special handling for members
-                              if (Array.isArray(value)) {
-                                return (
-                                  <div key={key}>
-                                    <div className="font-medium">
-                                      {key} ({value.length}):
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                      {value.map((member, i) => (
-                                        <span
-                                          key={i}
-                                          className="p-1 bg-primary-50 rounded text-xs"
-                                        >
-                                          {member}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              // Convert value to string for length check
-                              const stringValue =
-                                typeof value === "object"
-                                  ? JSON.stringify(value, null, 2)
-                                  : String(value).replace(/<SEP>/g, " | ");
-
-                              // If value is less than 10 characters, display as tag
-                              if (stringValue.length < 20) {
-                                return (
-                                  <div key={key}>
-                                    <span className="font-medium">{key}:</span>
-                                    <div className="mt-1">
-                                      <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">
-                                        {stringValue}
-                                      </span>
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              // Default handling for longer values
-                              return (
-                                <div key={key}>
-                                  <span className="font-medium">{key}:</span>
-                                  <div className="mt-1 text-gray-600 bg-gray-100 p-2 rounded text-xs">
-                                    {stringValue}
-                                  </div>
-                                </div>
-                              );
-                            }
-                          )}
+                          <PropertyList item={hoverHyperedge} />
                         </div>
                       )}
                       {hoverNode && (
                         <div className="text-sm text-gray-700 space-y-3 mt-4">
                           <div className="text-base font-semibold text-gray-900">
-                            Node
+                            {t("node")}
                           </div>
-                          {Object.entries(hoverNode).map(([key, value]) => {
-                            // Skip empty values
-                            if (
-                              !value ||
-                              (Array.isArray(value) && value.length === 0) ||
-                              excludedKeys.has(key)
-                            ) {
-                              return null;
-                            }
-
-                            // Convert value to string for length check
-                            const stringValue =
-                              typeof value === "object"
-                                ? JSON.stringify(value, null, 2)
-                                : String(value).replace(/<SEP>/g, " | ");
-
-                            // If value is less than 10 characters, display as tag
-                            if (stringValue.length < 20) {
-                              return (
-                                <div key={key}>
-                                  <span className="font-medium">{key}:</span>
-                                  <div className="mt-1">
-                                    <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">
-                                      {stringValue}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            }
-
-                            // Default handling for longer values
-                            return (
-                              <div key={key}>
-                                <span className="font-medium">{key}:</span>
-                                <div className="mt-1 text-gray-600 bg-gray-100 p-2 rounded text-xs">
-                                  {stringValue}
-                                </div>
-                              </div>
-                            );
-                          })}
+                          <PropertyList item={hoverNode} />
                         </div>
                       )}
                     </div>
