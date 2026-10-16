@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hypergraph DB Admin</title>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+    <script src="https://unpkg.com/@tailwindcss/browser@4.1.11"></script>
+    <style type="text/tailwindcss">
+      @theme {
+        --color-primary-50: #faf5ff;
+        --color-primary-100: #f3e8ff;
+        --color-primary-500: #8b5cf6;
+        --color-primary-600: #7c3aed;
+        --color-primary-700: #6d28d9;
+      }
+    </style>
+    <style>
+      body { margin: 0; }
+      textarea.code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useCallback, useRef } = React;
+
+      // ------------------------------------------------------------------ API
+      async function api(path, body) {
+        const opts = body === undefined
+          ? {}
+          : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+        const res = await fetch(path, opts);
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        if (!res.ok || (data && data.error)) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+      }
+
+      const qs = (params) =>
+        new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null)).toString();
+
+
+      // ------------------------------------------------------------------ i18n
+      // Entries are strings with {placeholders}, or functions returning JSX for rich text.
+      const MESSAGES = {
+        en: {
+          appSubtitle: "Admin console",
+          navOverview: "Overview", navVertices: "Vertices", navEdges: "Hyperedges", navData: "Import / Export", navGraph: "Graph viewer",
+          vertices: "Vertices", hyperedges: "Hyperedges",
+          connecting: "Connecting...", loading: "Loading...", noData: "No data", none: "None",
+          unsaved: "Unsaved changes", saved: "Saved", save: "Save", savedToDisk: "Saved to disk",
+          cancel: "Cancel", create: "Create", close: "Close", delete: "Delete", open: "Open", saveChanges: "Save changes",
+          confirmTitle: "Please confirm",
+          jsonValid: "Valid JSON object", jsonInvalid: "Invalid: {error}", jsonMustBeObject: "Must be a JSON object",
+          records: "{n} records", prev: "Prev", next: "Next", pageOf: "Page {page} / {total}",
+          logScale: "Log scale",
+          statVertices: "Vertices", statEdges: "Hyperedges", statAvgDegree: "Avg. vertex degree", statMaxDegree: "Max vertex degree",
+          statAvgSize: "Avg. hyperedge size", statMaxSize: "Max hyperedge size", statIsolated: "Isolated vertices",
+          degreeDist: "Vertex degree distribution", sizeDist: "Hyperedge size distribution", histDegree: "degree", histSize: "size",
+          topVertices: "Top vertices by degree", entityTypes: "Entity types", attributeKeys: "Attribute keys",
+          newVertex: "+ New vertex", searchVertices: "Search id or attributes...", allEntityTypes: "All entity types",
+          sortDegreeDesc: "Degree ↓", sortDegreeAsc: "Degree ↑", sortIdAsc: "ID A→Z", sortIdDesc: "ID Z→A",
+          colId: "ID", colDegree: "Degree", colEntityType: "Entity type", colAttributes: "Attributes", colVertices: "Vertices", colSize: "Size",
+          noVertices: "No vertices", noEdges: "No hyperedges",
+          newVertexTitle: "New vertex", idLabel: "ID", idPlaceholder: "e.g. Alice", attributes: "Attributes", attributesJson: "Attributes (JSON)",
+          vertexCreated: "Vertex {id} created", vertexSaved: "Vertex saved", vertexDeleted: "Vertex deleted",
+          confirmDeleteVertex: ({ id, degree }) => <>Delete vertex <b>{id}</b>? It will be removed from its {degree} hyperedge(s); hyperedges left with fewer than 2 vertices are deleted.</>,
+          vertexTitle: ({ id }) => <>Vertex <span className="text-primary-600">{id}</span></>,
+          degree: "Degree", neighbors: "Neighbors", openViewer: "Open graph viewer ↗",
+          incidentEdges: "Incident hyperedges ({n})", first200: " — showing first 200", isolated: "This vertex is isolated.",
+          newEdge: "+ New hyperedge", searchEdges: "Search vertices or attributes...",
+          sortSizeDesc: "Size ↓", sortSizeAsc: "Size ↑", sortVerticesAsc: "Vertices A→Z", more: "+{n} more",
+          pickTwo: "Pick at least 2 vertices", searchToAdd: "Search vertices to add...", deg: "deg {n}", noMatch: "No matching vertices",
+          newEdgeTitle: "New hyperedge", edgeCreated: "Hyperedge created", edgeSaved: "Hyperedge saved", edgeDeleted: "Hyperedge deleted",
+          confirmDeleteEdge: "Delete this hyperedge connecting {n} vertices? The vertices themselves are kept.",
+          edgeTitle: "Hyperedge ({n} vertices)",
+          membershipHint: "Membership is the hyperedge's identity — to change it, create a new hyperedge and delete this one.",
+          invalidJsonFile: "Not valid JSON: {error}",
+          confirmImport: ({ file, v, e }) => <>Import <b>{file}</b>? This <b>replaces all {v} vertices and {e} hyperedges</b> in memory. The file on disk is untouched until you click Save.</>,
+          replaceData: "Replace data", imported: "Imported {v} vertices, {e} hyperedges",
+          storage: "Storage", file: "File", onDisk: "On disk", bytes: "{n} bytes", notSavedYet: "Not saved yet",
+          lastSaved: "Last saved", notThisSession: "Not in this session", status: "Status", inSync: "In sync", saveToDisk: "Save to disk",
+          hifTitle: "HIF import / export", hifDesc: "(Hypergraph Interchange Format) is a JSON format supported by many hypergraph libraries.",
+          exportHif: "Export HIF", importHif: "Import HIF…",
+        },
+        zh: {
+          appSubtitle: "管理后台",
+          navOverview: "概览", navVertices: "实体", navEdges: "超边", navData: "导入 / 导出", navGraph: "超图可视化",
+          vertices: "实体", hyperedges: "超边",
+          connecting: "连接中...", loading: "加载中...", noData: "暂无数据", none: "无",
+          unsaved: "有未保存的修改", saved: "已保存", save: "保存", savedToDisk: "已保存到磁盘",
+          cancel: "取消", create: "创建", close: "关闭", delete: "删除", open: "打开", saveChanges: "保存修改",
+          confirmTitle: "请确认",
+          jsonValid: "JSON 格式正确", jsonInvalid: "格式错误：{error}", jsonMustBeObject: "必须是 JSON 对象",
+          records: "共 {n} 条", prev: "上一页", next: "下一页", pageOf: "第 {page} / {total} 页",
+          logScale: "对数刻度",
+          statVertices: "实体数", statEdges: "超边数", statAvgDegree: "实体平均度", statMaxDegree: "实体最大度",
+          statAvgSize: "超边平均大小", statMaxSize: "超边最大大小", statIsolated: "孤立实体",
+          degreeDist: "实体度分布", sizeDist: "超边大小分布", histDegree: "度", histSize: "大小",
+          topVertices: "度数最高的实体", entityTypes: "实体类型", attributeKeys: "属性字段",
+          newVertex: "+ 新建实体", searchVertices: "搜索 ID 或属性...", allEntityTypes: "全部实体类型",
+          sortDegreeDesc: "度数 ↓", sortDegreeAsc: "度数 ↑", sortIdAsc: "ID A→Z", sortIdDesc: "ID Z→A",
+          colId: "ID", colDegree: "度数", colEntityType: "实体类型", colAttributes: "属性", colVertices: "实体", colSize: "大小",
+          noVertices: "没有实体", noEdges: "没有超边",
+          newVertexTitle: "新建实体", idLabel: "ID", idPlaceholder: "例如：关羽", attributes: "属性", attributesJson: "属性（JSON）",
+          vertexCreated: "已创建实体 {id}", vertexSaved: "实体已保存", vertexDeleted: "实体已删除",
+          confirmDeleteVertex: ({ id, degree }) => <>确定删除实体 <b>{id}</b> 吗？它会从所属的 {degree} 条超边中移除，移除后不足 2 个实体的超边会被一起删除。</>,
+          vertexTitle: ({ id }) => <>实体 <span className="text-primary-600">{id}</span></>,
+          degree: "度数", neighbors: "邻居数", openViewer: "在超图可视化中打开 ↗",
+          incidentEdges: "关联超边（{n}）", first200: " — 仅显示前 200 条", isolated: "这是一个孤立实体。",
+          newEdge: "+ 新建超边", searchEdges: "搜索实体或属性...",
+          sortSizeDesc: "大小 ↓", sortSizeAsc: "大小 ↑", sortVerticesAsc: "实体 A→Z", more: "+{n} 个",
+          pickTwo: "至少选择 2 个实体", searchToAdd: "搜索要添加的实体...", deg: "度 {n}", noMatch: "没有匹配的实体",
+          newEdgeTitle: "新建超边", edgeCreated: "超边已创建", edgeSaved: "超边已保存", edgeDeleted: "超边已删除",
+          confirmDeleteEdge: "确定删除这条连接 {n} 个实体的超边吗？实体本身会保留。",
+          edgeTitle: "超边（{n} 个实体）",
+          membershipHint: "超边由它的实体集合唯一确定，不能直接修改成员。要修改成员，请新建一条超边并删除这条。",
+          invalidJsonFile: "不是有效的 JSON：{error}",
+          confirmImport: ({ file, v, e }) => <>确定导入 <b>{file}</b> 吗？这会<b>替换内存中全部 {v} 个实体和 {e} 条超边</b>。点击保存之前，磁盘上的文件不会改变。</>,
+          replaceData: "替换数据", imported: "已导入 {v} 个实体、{e} 条超边",
+          storage: "存储", file: "文件", onDisk: "磁盘占用", bytes: "{n} 字节", notSavedYet: "尚未保存",
+          lastSaved: "上次保存", notThisSession: "本次会话未保存", status: "状态", inSync: "已同步", saveToDisk: "保存到磁盘",
+          hifTitle: "HIF 导入 / 导出", hifDesc: "（Hypergraph Interchange Format）是一种被许多超图工具支持的 JSON 交换格式。",
+          exportHif: "导出 HIF", importHif: "导入 HIF…",
+        },
+      };
+
+      const detectLang = () => {
+        try {
+          const saved = localStorage.getItem("hgdb-admin-lang");
+          if (saved in MESSAGES) return saved;
+        } catch (e) {}
+        return (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+      };
+      // Set by <App> on every render, before its children render.
+      let currentLang = "en";
+      function t(key, vars = {}) {
+        const msg = MESSAGES[currentLang][key] ?? MESSAGES.en[key] ?? key;
+        if (typeof msg === "function") return msg(vars);
+        return msg.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+      }
+
+      const fmtId = (id) => (typeof id === "string" ? id : JSON.stringify(id));
+      const fmtNum = (n) => (typeof n === "number" ? n.toLocaleString() : n);
+
+      // ------------------------------------------------------------------ small UI pieces
+      function Button({ variant = "default", className = "", ...props }) {
+        const styles = {
+          default: "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50",
+          primary: "bg-primary-600 text-white hover:bg-primary-700 border border-primary-600",
+          danger: "bg-white border border-red-300 text-red-600 hover:bg-red-50",
+          dangerSolid: "bg-red-600 text-white hover:bg-red-700 border border-red-600",
+          ghost: "text-gray-600 hover:bg-gray-100 border border-transparent",
+        };
+        return (
+          <button
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${styles[variant]} ${className}`}
+            {...props}
+          />
+        );
+      }
+
+      function Input(props) {
+        return (
+          <input
+            {...props}
+            className={`px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${props.className || ""}`}
+          />
+        );
+      }
+
+      function Select({ children, ...props }) {
+        return (
+          <select
+            {...props}
+            className={`px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 ${props.className || ""}`}
+          >
+            {children}
+          </select>
+        );
+      }
+
+      function Card({ title, actions, children, className = "" }) {
+        return (
+          <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>
+            {title && (
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-800">{title}</h3>
+                {actions}
+              </div>
+            )}
+            <div className="p-5">{children}</div>
+          </div>
+        );
+      }
+
+      function Modal({ title, onClose, children, footer, wide }) {
+        useEffect(() => {
+          const onKey = (e) => e.key === "Escape" && onClose();
+          window.addEventListener("keydown", onKey);
+          return () => window.removeEventListener("keydown", onKey);
+        }, [onClose]);
+        return (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4" onMouseDown={onClose}>
+            <div
+              className={`bg-white rounded-xl shadow-2xl w-full ${wide ? "max-w-3xl" : "max-w-lg"} max-h-[90vh] flex flex-col`}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-800">{title}</h3>
+                <button className="text-gray-400 hover:text-gray-600 text-xl leading-none" onClick={onClose}>×</button>
+              </div>
+              <div className="p-5 overflow-y-auto">{children}</div>
+              {footer && <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">{footer}</div>}
+            </div>
+          </div>
+        );
+      }
+
+      function ConfirmModal({ message, confirmText, onConfirm, onClose }) {
+        const [busy, setBusy] = useState(false);
+        return (
+          <Modal
+            title={t("confirmTitle")}
+            onClose={onClose}
+            footer={
+              <>
+                <Button onClick={onClose}>{t("cancel")}</Button>
+                <Button
+                  variant="dangerSolid"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try { await onConfirm(); onClose(); } finally { setBusy(false); }
+                  }}
+                >
+                  {confirmText || t("delete")}
+                </Button>
+              </>
+            }
+          >
+            <div className="text-sm text-gray-700">{message}</div>
+          </Modal>
+        );
+      }
+
+      function JsonEditor({ value, onChange, rows = 12 }) {
+        let error = null;
+        try {
+          const parsed = JSON.parse(value || "{}");
+          if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) error = t("jsonMustBeObject");
+        } catch (e) {
+          error = e.message;
+        }
+        return (
+          <div>
+            <textarea
+              className={`code w-full text-xs p-3 border rounded-lg focus:outline-none focus:ring-2 ${error ? "border-red-300 focus:ring-red-400" : "border-gray-300 focus:ring-primary-500"}`}
+              rows={rows}
+              spellCheck={false}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+            />
+            <div className={`text-xs mt-1 ${error ? "text-red-600" : "text-gray-400"}`}>
+              {error ? t("jsonInvalid", { error }) : t("jsonValid")}
+            </div>
+          </div>
+        );
+      }
+      const jsonValid = (s) => {
+        try {
+          const p = JSON.parse(s || "{}");
+          return p !== null && typeof p === "object" && !Array.isArray(p);
+        } catch (e) {
+          return false;
+        }
+      };
+
+      function Pagination({ pagination, onPage }) {
+        if (!pagination) return null;
+        const { page, total_pages, total } = pagination;
+        return (
+          <div className="flex items-center justify-between text-sm text-gray-600 mt-3">
+            <span>{t("records", { n: fmtNum(total) })}</span>
+            <div className="flex items-center gap-2">
+              <Button disabled={page <= 1} onClick={() => onPage(page - 1)}>{t("prev")}</Button>
+              <span>{t("pageOf", { page, total: total_pages })}</span>
+              <Button disabled={page >= total_pages} onClick={() => onPage(page + 1)}>{t("next")}</Button>
+            </div>
+          </div>
+        );
+      }
+
+      function VertexChip({ id, onClick }) {
+        return (
+          <span
+            onClick={onClick}
+            className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-primary-50 text-primary-700 border border-primary-100 max-w-[16rem] truncate ${onClick ? "cursor-pointer hover:bg-primary-100" : ""}`}
+            title={fmtId(id)}
+          >
+            {fmtId(id)}
+          </span>
+        );
+      }
+
+      // Bar chart for [value, count] pairs. Long tails (typical power-law degree
+      // distributions) get exact bars for small values, then geometrically widening ranges.
+      function Histogram({ data, label }) {
+        const [log, setLog] = useState(true);
+        if (!data || data.length === 0) return <div className="text-sm text-gray-400">{t("noData")}</div>;
+        let bars = data.map(([k, c]) => ({ label: String(k), count: c }));
+        if (data.length > 24) {
+          const hi = data[data.length - 1][0];
+          const ranges = [];
+          for (let start = data[0][0], width = 1; start <= hi; start += width) {
+            ranges.push([start, start + width - 1]);
+            if (ranges.length >= 8) width = Math.ceil(width * 1.6);
+          }
+          bars = ranges
+            .map(([a, b]) => ({
+              label: a === b ? String(a) : `${a}-${b}`,
+              count: data.reduce((s, [k, c]) => (k >= a && k <= b ? s + c : s), 0),
+            }))
+            .filter((b) => b.count > 0);
+        }
+        const scale = (n) => (log ? Math.log10(n + 1) : n);
+        const max = Math.max(...bars.map((b) => scale(b.count)));
+        const labelEvery = Math.ceil(bars.length / 14);
+        return (
+          <div>
+            <label className="flex items-center justify-end gap-1.5 text-xs text-gray-500 mb-2 select-none">
+              <input type="checkbox" checked={log} onChange={(e) => setLog(e.target.checked)} className="accent-primary-600" />
+              {t("logScale")}
+            </label>
+            <div className="flex items-end gap-1 h-40">
+              {bars.map((b) => (
+                <div key={b.label} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                  <div className="absolute -top-6 hidden group-hover:block text-xs bg-gray-800 text-white px-1.5 py-0.5 rounded whitespace-nowrap z-10">
+                    {label} {b.label}: {fmtNum(b.count)}
+                  </div>
+                  <div
+                    className="w-full bg-primary-500/80 hover:bg-primary-600 rounded-t"
+                    style={{ height: `${Math.max(2, (scale(b.count) / max) * 100)}%` }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-1 mt-1">
+              {bars.map((b, i) => (
+                <div key={b.label} className="flex-1 text-[10px] text-gray-500 text-center whitespace-nowrap overflow-visible">
+                  {i % labelEvery === 0 ? b.label : ""}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      function RankList({ items, onClick }) {
+        if (!items || items.length === 0) return <div className="text-sm text-gray-400">{t("noData")}</div>;
+        const max = Math.max(...items.map(([, c]) => c));
+        return (
+          <div className="space-y-1.5">
+            {items.map(([k, c]) => (
+              <div key={k} className={`text-sm ${onClick ? "cursor-pointer" : ""}`} onClick={() => onClick && onClick(k)}>
+                <div className="flex justify-between mb-0.5">
+                  <span className="text-gray-700 truncate mr-2">{k}</span>
+                  <span className="text-gray-500 tabular-nums">{fmtNum(c)}</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded">
+                  <div className="h-1.5 bg-primary-500 rounded" style={{ width: `${(c / max) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      // ------------------------------------------------------------------ Overview page
+      function Overview({ version, openVertex, gotoVertices }) {
+        const [stats, setStats] = useState(null);
+        const [error, setError] = useState(null);
+        useEffect(() => {
+          api("/api/admin/stats").then(setStats).catch((e) => setError(e.message));
+        }, [version]);
+        if (error) return <div className="text-red-600">{error}</div>;
+        if (!stats) return <div className="text-gray-500">{t("loading")}</div>;
+        const cards = [
+          [t("statVertices"), stats.num_v],
+          [t("statEdges"), stats.num_e],
+          [t("statAvgDegree"), stats.avg_degree],
+          [t("statMaxDegree"), stats.max_degree],
+          [t("statAvgSize"), stats.avg_edge_size],
+          [t("statMaxSize"), stats.max_edge_size],
+          [t("statIsolated"), stats.isolated_v],
+        ];
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+              {cards.map(([label, value]) => (
+                <div key={label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                  <div className="text-xs text-gray-500">{label}</div>
+                  <div className="text-2xl font-bold text-gray-800 mt-1 tabular-nums">{fmtNum(value)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card title={t("degreeDist")}>
+                <Histogram data={stats.degree_hist} label={t("histDegree")} />
+              </Card>
+              <Card title={t("sizeDist")}>
+                <Histogram data={stats.edge_size_hist} label={t("histSize")} />
+              </Card>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card title={t("topVertices")}>
+                {stats.top_vertices.length === 0 ? (
+                  <div className="text-sm text-gray-400">{t("noData")}</div>
+                ) : (
+                  <RankList items={stats.top_vertices.map((v) => [fmtId(v.id), v.degree])}
+                    onClick={(k) => openVertex(stats.top_vertices.find((v) => fmtId(v.id) === k).id)} />
+                )}
+              </Card>
+              <Card title={t("entityTypes")}>
+                <RankList items={stats.entity_types} onClick={(t) => gotoVertices({ entity_type: t })} />
+              </Card>
+              <Card title={t("attributeKeys")}>
+                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase">{t("vertices")}</div>
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {stats.vertex_keys.map(([k, c]) => (
+                    <span key={k} className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{k} <span className="text-gray-400">{fmtNum(c)}</span></span>
+                  ))}
+                  {stats.vertex_keys.length === 0 && <span className="text-sm text-gray-400">{t("none")}</span>}
+                </div>
+                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase">{t("hyperedges")}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {stats.edge_keys.map(([k, c]) => (
+                    <span key={k} className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{k} <span className="text-gray-400">{fmtNum(c)}</span></span>
+                  ))}
+                  {stats.edge_keys.length === 0 && <span className="text-sm text-gray-400">{t("none")}</span>}
+                </div>
+              </Card>
+            </div>
+          </div>
+        );
+      }
+
+      // ------------------------------------------------------------------ Vertex pages
+      function VerticesPage({ version, filters, setFilters, openVertex, onCreate }) {
+        const [result, setResult] = useState(null);
+        const [error, setError] = useState(null);
+        const [search, setSearch] = useState(filters.search || "");
+        const [types, setTypes] = useState([]);
+
+        useEffect(() => {
+          api("/api/admin/stats").then((s) => setTypes(s.entity_types.map(([t]) => t))).catch(() => {});
+        }, [version]);
+        useEffect(() => {
+          const t = setTimeout(() => search !== (filters.search || "") && setFilters({ ...filters, search, page: 1 }), 300);
+          return () => clearTimeout(t);
+        }, [search]);
+        useEffect(() => {
+          api(`/api/admin/vertices?${qs({ page_size: 25, ...filters })}`)
+            .then((r) => { setResult(r); setError(null); })
+            .catch((e) => setError(e.message));
+        }, [filters, version]);
+
+        return (
+          <Card
+            title={t("navVertices")}
+            actions={<Button variant="primary" onClick={onCreate}>{t("newVertex")}</Button>}
+          >
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Input placeholder={t("searchVertices")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-72" />
+              <Select value={filters.entity_type || ""} onChange={(e) => setFilters({ ...filters, entity_type: e.target.value, page: 1 })}>
+                <option value="">{t("allEntityTypes")}</option>
+                {types.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+              <Select
+                value={`${filters.sort_by || "degree"}:${filters.sort_order || "desc"}`}
+                onChange={(e) => {
+                  const [sort_by, sort_order] = e.target.value.split(":");
+                  setFilters({ ...filters, sort_by, sort_order, page: 1 });
+                }}
+              >
+                <option value="degree:desc">{t("sortDegreeDesc")}</option>
+                <option value="degree:asc">{t("sortDegreeAsc")}</option>
+                <option value="id:asc">{t("sortIdAsc")}</option>
+                <option value="id:desc">{t("sortIdDesc")}</option>
+              </Select>
+            </div>
+            {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
+            <div className="overflow-x-auto border border-gray-100 rounded-lg">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 text-left">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">{t("colId")}</th>
+                    <th className="px-3 py-2 font-medium w-20">{t("colDegree")}</th>
+                    <th className="px-3 py-2 font-medium w-40">{t("colEntityType")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colAttributes")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result && result.data.map((v) => (
+                    <tr key={fmtId(v.id)} className="border-t border-gray-100 hover:bg-primary-50/50 cursor-pointer" onClick={() => openVertex(v.id)}>
+                      <td className="px-3 py-2 font-medium text-gray-800 max-w-xs truncate">{fmtId(v.id)}</td>
+                      <td className="px-3 py-2 tabular-nums">{v.degree}</td>
+                      <td className="px-3 py-2 text-gray-600 truncate max-w-[10rem]">{v.entity_type}</td>
+                      <td className="px-3 py-2 text-gray-500 font-mono text-xs truncate max-w-md">{v.preview}</td>
+                    </tr>
+                  ))}
+                  {result && result.data.length === 0 && (
+                    <tr><td colSpan="4" className="px-3 py-8 text-center text-gray-400">{t("noVertices")}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <Pagination pagination={result && result.pagination} onPage={(page) => setFilters({ ...filters, page })} />
+          </Card>
+        );
+      }
+
+      function NewVertexModal({ onClose, onDone, notify }) {
+        const [id, setId] = useState("");
+        const [idType, setIdType] = useState("string");
+        const [data, setData] = useState('{\n  "entity_type": "",\n  "description": ""\n}');
+        const [busy, setBusy] = useState(false);
+        const idValue = idType === "number" ? Number(id) : id;
+        const idOk = id.trim() !== "" && (idType === "string" || !Number.isNaN(idValue));
+        const submit = async () => {
+          setBusy(true);
+          try {
+            const res = await api("/api/admin/vertex/upsert", { create: true, id: idValue, data: JSON.parse(data || "{}") });
+            notify(t("vertexCreated", { id: fmtId(res.id) }));
+            onDone(res.id);
+          } catch (e) {
+            notify(e.message, "error");
+          } finally {
+            setBusy(false);
+          }
+        };
+        return (
+          <Modal
+            title={t("newVertexTitle")}
+            onClose={onClose}
+            footer={<><Button onClick={onClose}>{t("cancel")}</Button><Button variant="primary" disabled={!idOk || !jsonValid(data) || busy} onClick={submit}>{t("create")}</Button></>}
+          >
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("idLabel")}</label>
+            <div className="flex gap-2 mb-4">
+              <Input autoFocus value={id} onChange={(e) => setId(e.target.value)} className="flex-1" placeholder={t("idPlaceholder")} />
+              <Select value={idType} onChange={(e) => setIdType(e.target.value)}>
+                <option value="string">string</option>
+                <option value="number">number</option>
+              </Select>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("attributes")}</label>
+            <JsonEditor value={data} onChange={setData} rows={8} />
+          </Modal>
+        );
+      }
+
+      function VertexDetail({ id, onClose, openVertex, openEdge, onChanged, notify, confirm }) {
+        const [detail, setDetail] = useState(null);
+        const [text, setText] = useState("");
+        const [busy, setBusy] = useState(false);
+        const load = useCallback(() => {
+          api("/api/admin/vertex/get", { id })
+            .then((d) => { setDetail(d); setText(JSON.stringify(d.data, null, 2)); })
+            .catch((e) => { notify(e.message, "error"); onClose(); });
+        }, [id]);
+        useEffect(load, [load]);
+
+        const save = async () => {
+          setBusy(true);
+          try {
+            await api("/api/admin/vertex/upsert", { id, data: JSON.parse(text || "{}"), replace: true });
+            notify(t("vertexSaved"));
+            onChanged();
+            load();
+          } catch (e) {
+            notify(e.message, "error");
+          } finally {
+            setBusy(false);
+          }
+        };
+        const remove = () =>
+          confirm({
+            message: t("confirmDeleteVertex", { id: fmtId(id), degree: detail.degree }),
+            onConfirm: async () => {
+              try {
+                await api("/api/admin/vertex/delete", { id });
+                notify(t("vertexDeleted"));
+                onChanged();
+                onClose();
+              } catch (e) {
+                notify(e.message, "error");
+              }
+            },
+          });
+
+        const dirty = detail && text !== JSON.stringify(detail.data, null, 2);
+        return (
+          <Modal
+            title={t("vertexTitle", { id: fmtId(id) })}
+            onClose={onClose}
+            wide
+            footer={
+              <>
+                <Button variant="danger" className="mr-auto" disabled={!detail} onClick={remove}>{t("delete")}</Button>
+                <Button onClick={onClose}>{t("close")}</Button>
+                <Button variant="primary" disabled={!dirty || !jsonValid(text) || busy} onClick={save}>{t("saveChanges")}</Button>
+              </>
+            }
+          >
+            {!detail ? (
+              <div className="text-gray-500">{t("loading")}</div>
+            ) : (
+              <div className="space-y-5">
+                <div className="flex gap-6 text-sm">
+                  <div><span className="text-gray-500">{t("degree")}</span> <b className="tabular-nums">{detail.degree}</b></div>
+                  <div><span className="text-gray-500">{t("neighbors")}</span> <b className="tabular-nums">{detail.neighbors}</b></div>
+                  <a className="text-primary-600 hover:underline ml-auto" href={`/viewer?vertex=${encodeURIComponent(fmtId(id))}`} target="_blank">{t("openViewer")}</a>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">{t("attributesJson")}</div>
+                  <JsonEditor value={text} onChange={setText} />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-2">
+                    {t("incidentEdges", { n: detail.degree })}{detail.edges_truncated && t("first200")}
+                  </div>
+                  <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                    {detail.edges.map((e) => (
+                      <div key={JSON.stringify(e.vertices)} className="flex items-center gap-2 p-2 border border-gray-100 rounded-lg hover:bg-gray-50">
+                        <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+                          {e.vertices.map((v) => (
+                            <VertexChip key={fmtId(v)} id={v} onClick={JSON.stringify(v) === JSON.stringify(id) ? null : () => openVertex(v)} />
+                          ))}
+                        </div>
+                        <Button variant="ghost" onClick={() => openEdge(e.vertices)}>{t("open")}</Button>
+                      </div>
+                    ))}
+                    {detail.edges.length === 0 && <div className="text-sm text-gray-400">{t("isolated")}</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Modal>
+        );
+      }
+
+      // ------------------------------------------------------------------ Hyperedge pages
+      function EdgesPage({ version, openEdge, onCreate, openVertex }) {
+        const [filters, setFilters] = useState({ page: 1, sort_by: "size", sort_order: "desc" });
+        const [search, setSearch] = useState("");
+        const [result, setResult] = useState(null);
+        const [error, setError] = useState(null);
+        useEffect(() => {
+          const t = setTimeout(() => search !== (filters.search || "") && setFilters({ ...filters, search, page: 1 }), 300);
+          return () => clearTimeout(t);
+        }, [search]);
+        useEffect(() => {
+          api(`/api/admin/edges?${qs({ page_size: 25, ...filters })}`)
+            .then((r) => { setResult(r); setError(null); })
+            .catch((e) => setError(e.message));
+        }, [filters, version]);
+
+        return (
+          <Card title={t("navEdges")} actions={<Button variant="primary" onClick={onCreate}>{t("newEdge")}</Button>}>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Input placeholder={t("searchEdges")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-72" />
+              <Select
+                value={`${filters.sort_by}:${filters.sort_order}`}
+                onChange={(e) => {
+                  const [sort_by, sort_order] = e.target.value.split(":");
+                  setFilters({ ...filters, sort_by, sort_order, page: 1 });
+                }}
+              >
+                <option value="size:desc">{t("sortSizeDesc")}</option>
+                <option value="size:asc">{t("sortSizeAsc")}</option>
+                <option value="vertices:asc">{t("sortVerticesAsc")}</option>
+              </Select>
+            </div>
+            {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
+            <div className="overflow-x-auto border border-gray-100 rounded-lg">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 text-left">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">{t("colVertices")}</th>
+                    <th className="px-3 py-2 font-medium w-16">{t("colSize")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colAttributes")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result && result.data.map((e) => (
+                    <tr key={JSON.stringify(e.vertices)} className="border-t border-gray-100 hover:bg-primary-50/50 cursor-pointer" onClick={() => openEdge(e.vertices)}>
+                      <td className="px-3 py-2 max-w-md">
+                        <div className="flex flex-wrap gap-1">
+                          {e.vertices.slice(0, 8).map((v) => (
+                            <VertexChip key={fmtId(v)} id={v} onClick={(ev) => { ev.stopPropagation(); openVertex(v); }} />
+                          ))}
+                          {e.vertices.length > 8 && <span className="text-xs text-gray-400">{t("more", { n: e.vertices.length - 8 })}</span>}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 tabular-nums">{e.size}</td>
+                      <td className="px-3 py-2 text-gray-500 font-mono text-xs truncate max-w-md">{e.preview}</td>
+                    </tr>
+                  ))}
+                  {result && result.data.length === 0 && (
+                    <tr><td colSpan="3" className="px-3 py-8 text-center text-gray-400">{t("noEdges")}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <Pagination pagination={result && result.pagination} onPage={(page) => setFilters({ ...filters, page })} />
+          </Card>
+        );
+      }
+
+      function VertexPicker({ selected, setSelected }) {
+        const [q, setQ] = useState("");
+        const [options, setOptions] = useState([]);
+        useEffect(() => {
+          const t = setTimeout(() => {
+            api(`/api/admin/vertices?${qs({ search: q, page_size: 8 })}`).then((r) => setOptions(r.data)).catch(() => {});
+          }, 200);
+          return () => clearTimeout(t);
+        }, [q]);
+        const key = (v) => JSON.stringify(v);
+        const isSel = (v) => selected.some((s) => key(s) === key(v));
+        return (
+          <div>
+            <div className="flex flex-wrap gap-1 min-h-[2rem] p-2 border border-gray-200 rounded-lg mb-2">
+              {selected.length === 0 && <span className="text-xs text-gray-400">{t("pickTwo")}</span>}
+              {selected.map((v) => (
+                <span key={key(v)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-primary-600 text-white">
+                  {fmtId(v)}
+                  <button onClick={() => setSelected(selected.filter((s) => key(s) !== key(v)))}>×</button>
+                </span>
+              ))}
+            </div>
+            <Input placeholder={t("searchToAdd")} value={q} onChange={(e) => setQ(e.target.value)} className="w-full mb-1" />
+            <div className="border border-gray-100 rounded-lg divide-y divide-gray-100">
+              {options.map((v) => (
+                <div
+                  key={key(v.id)}
+                  className={`px-3 py-1.5 text-sm flex justify-between ${isSel(v.id) ? "text-gray-300" : "cursor-pointer hover:bg-primary-50"}`}
+                  onClick={() => !isSel(v.id) && setSelected([...selected, v.id])}
+                >
+                  <span className="truncate">{fmtId(v.id)}</span>
+                  <span className="text-xs text-gray-400">{v.entity_type} · {t("deg", { n: v.degree })}</span>
+                </div>
+              ))}
+              {options.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">{t("noMatch")}</div>}
+            </div>
+          </div>
+        );
+      }
+
+      function NewEdgeModal({ onClose, onDone, notify }) {
+        const [selected, setSelected] = useState([]);
+        const [data, setData] = useState('{\n  "keywords": "",\n  "summary": ""\n}');
+        const [busy, setBusy] = useState(false);
+        const submit = async () => {
+          setBusy(true);
+          try {
+            const res = await api("/api/admin/edge/upsert", { create: true, vertices: selected, data: JSON.parse(data || "{}") });
+            notify(t("edgeCreated"));
+            onDone(res.vertices.map((v) => v.id));
+          } catch (e) {
+            notify(e.message, "error");
+          } finally {
+            setBusy(false);
+          }
+        };
+        return (
+          <Modal
+            title={t("newEdgeTitle")}
+            onClose={onClose}
+            wide
+            footer={<><Button onClick={onClose}>{t("cancel")}</Button><Button variant="primary" disabled={selected.length < 2 || !jsonValid(data) || busy} onClick={submit}>{t("create")}</Button></>}
+          >
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("vertices")}</label>
+            <VertexPicker selected={selected} setSelected={setSelected} />
+            <label className="block text-sm font-medium text-gray-700 mt-4 mb-1">{t("attributes")}</label>
+            <JsonEditor value={data} onChange={setData} rows={6} />
+          </Modal>
+        );
+      }
+
+      function EdgeDetail({ vertices, onClose, openVertex, onChanged, notify, confirm }) {
+        const [detail, setDetail] = useState(null);
+        const [text, setText] = useState("");
+        const [busy, setBusy] = useState(false);
+        const load = useCallback(() => {
+          api("/api/admin/edge/get", { vertices })
+            .then((d) => { setDetail(d); setText(JSON.stringify(d.data, null, 2)); })
+            .catch((e) => { notify(e.message, "error"); onClose(); });
+        }, [JSON.stringify(vertices)]);
+        useEffect(load, [load]);
+
+        const save = async () => {
+          setBusy(true);
+          try {
+            await api("/api/admin/edge/upsert", { vertices, data: JSON.parse(text || "{}"), replace: true });
+            notify(t("edgeSaved"));
+            onChanged();
+            load();
+          } catch (e) {
+            notify(e.message, "error");
+          } finally {
+            setBusy(false);
+          }
+        };
+        const remove = () =>
+          confirm({
+            message: t("confirmDeleteEdge", { n: vertices.length }),
+            onConfirm: async () => {
+              try {
+                await api("/api/admin/edge/delete", { vertices });
+                notify(t("edgeDeleted"));
+                onChanged();
+                onClose();
+              } catch (e) {
+                notify(e.message, "error");
+              }
+            },
+          });
+        const dirty = detail && text !== JSON.stringify(detail.data, null, 2);
+        return (
+          <Modal
+            title={t("edgeTitle", { n: vertices.length })}
+            onClose={onClose}
+            wide
+            footer={
+              <>
+                <Button variant="danger" className="mr-auto" disabled={!detail} onClick={remove}>{t("delete")}</Button>
+                <Button onClick={onClose}>{t("close")}</Button>
+                <Button variant="primary" disabled={!dirty || !jsonValid(text) || busy} onClick={save}>{t("saveChanges")}</Button>
+              </>
+            }
+          >
+            {!detail ? (
+              <div className="text-gray-500">{t("loading")}</div>
+            ) : (
+              <div className="space-y-5">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-2">{t("vertices")}</div>
+                  <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                    {detail.vertices.map((v) => (
+                      <span key={fmtId(v.id)} className="inline-flex items-center gap-1">
+                        <VertexChip id={v.id} onClick={() => openVertex(v.id)} />
+                        <span className="text-[10px] text-gray-400">{v.degree}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    {t("membershipHint")}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">{t("attributesJson")}</div>
+                  <JsonEditor value={text} onChange={setText} />
+                </div>
+              </div>
+            )}
+          </Modal>
+        );
+      }
+
+      // ------------------------------------------------------------------ Data page
+      function DataPage({ info, onChanged, notify, confirm, save }) {
+        const fileRef = useRef(null);
+        const importFile = (file) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            let parsed;
+            try {
+              parsed = JSON.parse(reader.result);
+            } catch (e) {
+              notify(t("invalidJsonFile", { error: e.message }), "error");
+              return;
+            }
+            confirm({
+              message: t("confirmImport", { file: file.name, v: fmtNum(info.num_v), e: fmtNum(info.num_e) }),
+              confirmText: t("replaceData"),
+              onConfirm: async () => {
+                try {
+                  const res = await api("/api/admin/hif", parsed);
+                  notify(t("imported", { v: fmtNum(res.num_v), e: fmtNum(res.num_e) }));
+                  onChanged();
+                } catch (e) {
+                  notify(e.message, "error");
+                }
+              },
+            });
+          };
+          reader.readAsText(file);
+        };
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card title={t("storage")}>
+              <dl className="text-sm space-y-2">
+                <div className="flex gap-2"><dt className="text-gray-500 w-28 shrink-0">{t("file")}</dt><dd className="font-mono text-xs break-all">{info.storage_file}</dd></div>
+                <div className="flex gap-2"><dt className="text-gray-500 w-28 shrink-0">{t("onDisk")}</dt><dd>{info.file_exists ? t("bytes", { n: fmtNum(info.file_size) }) : t("notSavedYet")}</dd></div>
+                <div className="flex gap-2"><dt className="text-gray-500 w-28 shrink-0">{t("lastSaved")}</dt><dd>{info.last_saved ? new Date(info.last_saved * 1000).toLocaleString() : t("notThisSession")}</dd></div>
+                <div className="flex gap-2"><dt className="text-gray-500 w-28 shrink-0">{t("status")}</dt><dd>{info.dirty ? <span className="text-amber-600">{t("unsaved")}</span> : <span className="text-green-600">{t("inSync")}</span>}</dd></div>
+              </dl>
+              <Button variant="primary" className="mt-4" onClick={save} disabled={!info.dirty}>{t("saveToDisk")}</Button>
+            </Card>
+            <Card title={t("hifTitle")}>
+              <p className="text-sm text-gray-600 mb-4">
+                <a className="text-primary-600 hover:underline" href="https://github.com/pszufe/HIF-standard" target="_blank">HIF</a> {t("hifDesc")}
+              </p>
+              <div className="flex gap-2">
+                <a href="/api/admin/hif" download="hypergraph.hif.json"><Button>{t("exportHif")}</Button></a>
+                <Button variant="danger" onClick={() => fileRef.current.click()}>{t("importHif")}</Button>
+                <input ref={fileRef} type="file" accept=".json,application/json" className="hidden"
+                  onChange={(e) => { e.target.files[0] && importFile(e.target.files[0]); e.target.value = ""; }} />
+              </div>
+            </Card>
+          </div>
+        );
+      }
+
+      // ------------------------------------------------------------------ App shell
+      const NAV = [
+        ["overview", "navOverview", "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"],
+        ["vertices", "navVertices", "M12 21a9 9 0 100-18 9 9 0 000 18z"],
+        ["edges", "navEdges", "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"],
+        ["data", "navData", "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"],
+        ["graph", "navGraph", "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"],
+      ];
+
+      function App() {
+        const [page, setPage] = useState(() => location.hash.slice(1) || "overview");
+        const [info, setInfo] = useState(null);
+        const [version, setVersion] = useState(0);
+        const [vertexFilters, setVertexFilters] = useState({ page: 1 });
+        const [stack, setStack] = useState([]); // open detail modals: {type, id|vertices}
+        const [modal, setModal] = useState(null); // "newVertex" | "newEdge"
+        const [confirmState, setConfirmState] = useState(null);
+        const [toasts, setToasts] = useState([]);
+        const [lang, setLang] = useState(detectLang);
+        currentLang = lang;
+        useEffect(() => {
+          document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+          try { localStorage.setItem("hgdb-admin-lang", lang); } catch (e) {}
+        }, [lang]);
+
+        const notify = useCallback((message, kind = "ok") => {
+          const id = Math.random();
+          setToasts((t) => [...t, { id, message, kind }]);
+          setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), kind === "error" ? 6000 : 3000);
+        }, []);
+        const refreshInfo = useCallback(() => api("/api/admin/info").then(setInfo).catch((e) => notify(e.message, "error")), []);
+        const onChanged = useCallback(() => { setVersion((v) => v + 1); refreshInfo(); }, []);
+
+        useEffect(() => { refreshInfo(); }, []);
+        useEffect(() => { location.hash = page; }, [page]);
+        useEffect(() => {
+          const onHash = () => setPage(location.hash.slice(1) || "overview");
+          window.addEventListener("hashchange", onHash);
+          return () => window.removeEventListener("hashchange", onHash);
+        }, []);
+        useEffect(() => {
+          const warn = (e) => { if (info && info.dirty) { e.preventDefault(); e.returnValue = ""; } };
+          window.addEventListener("beforeunload", warn);
+          return () => window.removeEventListener("beforeunload", warn);
+        }, [info]);
+
+        const save = async () => {
+          try {
+            setInfo(await api("/api/admin/save", {}));
+            notify(t("savedToDisk"));
+          } catch (e) {
+            notify(e.message, "error");
+          }
+        };
+        useEffect(() => {
+          const onKey = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); }
+          };
+          window.addEventListener("keydown", onKey);
+          return () => window.removeEventListener("keydown", onKey);
+        }, []);
+
+        const openVertex = (id) => setStack((s) => [...s, { type: "vertex", id }]);
+        const openEdge = (vertices) => setStack((s) => [...s, { type: "edge", vertices }]);
+        const closeTop = () => setStack((s) => s.slice(0, -1));
+        const confirm = (opts) => setConfirmState(opts);
+        const top = stack[stack.length - 1];
+
+        if (!info) return <div className="p-8 text-gray-500">{t("connecting")}</div>;
+        const navKey = NAV.find(([k]) => k === page)?.[1];
+        const title = navKey && t(navKey);
+
+        return (
+          <div className="flex h-screen">
+            <aside className="w-60 bg-white border-r border-gray-200 flex flex-col shrink-0">
+              <div className="px-5 py-5 border-b border-gray-100">
+                <div className="text-lg font-bold text-gray-800">Hypergraph DB</div>
+                <div className="text-xs text-gray-500">{t("appSubtitle")}</div>
+              </div>
+              <nav className="p-3 space-y-1 flex-1">
+                {NAV.map(([key, label, icon]) => (
+                  <button
+                    key={key}
+                    onClick={() => setPage(key)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${page === key ? "bg-primary-50 text-primary-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={icon} /></svg>
+                    {t(label)}
+                  </button>
+                ))}
+              </nav>
+              <div className="p-4 border-t border-gray-100 text-xs text-gray-500 space-y-1">
+                <div className="flex justify-between"><span>{t("vertices")}</span><b className="text-primary-600">{fmtNum(info.num_v)}</b></div>
+                <div className="flex justify-between"><span>{t("hyperedges")}</span><b className="text-primary-600">{fmtNum(info.num_e)}</b></div>
+              </div>
+            </aside>
+
+            <main className="flex-1 flex flex-col min-w-0">
+              <header className="h-14 bg-white border-b border-gray-200 flex items-center px-6 gap-4 shrink-0">
+                <h1 className="font-semibold text-gray-800">{title}</h1>
+                <span className="font-mono text-xs text-gray-400 truncate" title={info.storage_file}>{info.storage_file}</span>
+                <div className="ml-auto flex items-center gap-3">
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs" role="group" aria-label="Language">
+                    {[["en", "EN"], ["zh", "中文"]].map(([code, name]) => (
+                      <button
+                        key={code}
+                        onClick={() => setLang(code)}
+                        className={`px-2.5 py-1 ${lang === code ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                  {info.dirty ? (
+                    <span className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{t("unsaved")}</span>
+                  ) : (
+                    <span className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">{t("saved")}</span>
+                  )}
+                  <Button variant="primary" onClick={save} disabled={!info.dirty} title="Ctrl/⌘ + S">{t("save")}</Button>
+                </div>
+              </header>
+              <div className={`flex-1 overflow-y-auto ${page === "graph" ? "" : "p-6"}`}>
+                {page === "overview" && (
+                  <Overview version={version} openVertex={openVertex}
+                    gotoVertices={(f) => { setVertexFilters({ page: 1, ...f }); setPage("vertices"); }} />
+                )}
+                {page === "vertices" && (
+                  <VerticesPage version={version} filters={vertexFilters} setFilters={setVertexFilters}
+                    openVertex={openVertex} onCreate={() => setModal("newVertex")} />
+                )}
+                {page === "edges" && (
+                  <EdgesPage version={version} openEdge={openEdge} openVertex={openVertex} onCreate={() => setModal("newEdge")} />
+                )}
+                {page === "data" && <DataPage info={info} onChanged={onChanged} notify={notify} confirm={confirm} save={save} />}
+                {page === "graph" && <iframe key={version} src="/viewer" className="w-full h-full border-0" />}
+              </div>
+            </main>
+
+            {top && top.type === "vertex" && (
+              <VertexDetail key={`v-${stack.length}-${fmtId(top.id)}`} id={top.id} onClose={closeTop}
+                openVertex={openVertex} openEdge={openEdge} onChanged={onChanged} notify={notify} confirm={confirm} />
+            )}
+            {top && top.type === "edge" && (
+              <EdgeDetail key={`e-${stack.length}-${JSON.stringify(top.vertices)}`} vertices={top.vertices} onClose={closeTop}
+                openVertex={openVertex} onChanged={onChanged} notify={notify} confirm={confirm} />
+            )}
+            {modal === "newVertex" && (
+              <NewVertexModal onClose={() => setModal(null)} notify={notify}
+                onDone={(id) => { setModal(null); onChanged(); openVertex(id); }} />
+            )}
+            {modal === "newEdge" && (
+              <NewEdgeModal onClose={() => setModal(null)} notify={notify}
+                onDone={(vs) => { setModal(null); onChanged(); openEdge(vs); }} />
+            )}
+            {confirmState && <ConfirmModal {...confirmState} onClose={() => setConfirmState(null)} />}
+
+            <div className="fixed bottom-4 right-4 z-50 space-y-2">
+              {toasts.map((t) => (
+                <div key={t.id} className={`px-4 py-2 rounded-lg shadow-lg text-sm text-white ${t.kind === "error" ? "bg-red-600" : "bg-gray-800"}`}>
+                  {t.message}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>

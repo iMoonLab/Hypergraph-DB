@@ -75,6 +75,7 @@ Alice ←→ Bob, Bob ←→ Charlie, Alice ←→ Charlie (3 separate edges)
 | 🔗 **Native Hypergraph Support** | True multi-way relationships, not decomposed binary edges |
 | 💾 **Persistence** | Save/load with pickle, JSON, or custom formats |
 | 🎨 **Interactive Visualization** | Built-in web-based visualization with D3.js |
+| 🛠️ **Admin Console** | Web UI to browse, edit and manage your database |
 | 🔍 **Rich Queries** | Neighbor queries, degree calculations, community detection |
 | 📊 **Flexible Attributes** | Rich metadata for both vertices and hyperedges |
 | 🛠️ **Developer Friendly** | Modern Python with type hints, comprehensive docs |
@@ -138,6 +139,7 @@ This performance makes **Hypergraph-DB** a great choice for applications requiri
 | **🎯 Flexible Structure** | Support for complex hypergraphs with vertices and multi-way connections |
 | **⚡ High Performance** | Linear scaling with optimized operations for large datasets |
 | **🎨 Interactive Viz** | Beautiful web-based visualization with real-time interaction |
+| **🛠️ Admin Console** | Browse, search, edit and manage the database from your browser |
 | **💾 Persistent Storage** | Efficient save/load with data integrity guarantees |
 | **🔍 Smart Queries** | Fast neighbor discovery and relationship exploration |
 | **🛠️ Developer Friendly** | Modern Python with type hints and comprehensive documentation |
@@ -150,6 +152,7 @@ This performance makes **Hypergraph-DB** a great choice for applications requiri
 - **🔗 Relationship Queries**: Efficient neighbor and incident edge discovery  
 - **📊 Data Persistence**: Reliable serialization with pickle support
 - **🎨 Visual Exploration**: Interactive web interface for graph visualization
+- **🛠️ Web Administration**: Admin console with statistics, CRUD editing and HIF import/export
 - **⚙️ Extensible Design**: Built on dataclasses for easy customization
 
 ---
@@ -335,6 +338,30 @@ hg.draw()
 ![Hypergraph Visualization](docs/assets/vis_hg.jpg)
 
 *Interactive hypergraph visualization showing vertex relationships and properties*
+
+</div>
+
+#### **8. 🛠️ Admin Console**
+
+Manage your database from the browser with the built-in admin console:
+
+```python
+hg.admin()  # http://127.0.0.1:8900
+```
+
+**✨ Admin Console Features:**
+- 📊 **Dashboard**: Key statistics, degree and hyperedge size distributions, top vertices, entity types and attribute keys
+- 🔍 **Browse & Search**: Paginated vertex and hyperedge tables with search, filtering and sorting
+- ✏️ **Full CRUD**: Create, edit (JSON attribute editor), and delete vertices and hyperedges
+- 📦 **HIF Import / Export**: Exchange data with other hypergraph tools
+- 🎨 **Built-in Graph Viewer**: Jump from any vertex straight to its visualization
+- 💾 **Safe Editing**: Changes stay in memory until you click **Save** (or press Ctrl/⌘+S)
+
+<div align="center">
+
+![Hypergraph DB Admin Console](docs/assets/admin/overview.jpg)
+
+*Admin console overview of a 25K-vertex neurology knowledge hypergraph*
 
 </div>
 
