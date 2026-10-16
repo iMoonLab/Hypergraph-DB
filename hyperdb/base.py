@@ -300,3 +300,20 @@ class BaseHypergraphDB:
         from .draw import draw_hypergraph
 
         return draw_hypergraph(hypergraph_db=self, port=port, open_browser=open_browser, blocking=blocking)
+
+    def admin(self, port: int = 8900, open_browser: bool = True, blocking: bool = True, host: str = "127.0.0.1"):
+        """
+        Open the web admin console for the current HyperDB instance
+
+        Args:
+            ``port``: Server port number, defaults to 8900
+            ``open_browser``: Whether to automatically open the browser, defaults to True
+            ``blocking``: Whether to block the main thread, defaults to True. Set to False for non-blocking mode.
+            ``host``: Interface to bind, defaults to 127.0.0.1. The console has no authentication.
+
+        Returns:
+            HypergraphAdmin instance
+        """
+        from .admin import run_admin
+
+        return run_admin(hypergraph_db=self, host=host, port=port, open_browser=open_browser, blocking=blocking)

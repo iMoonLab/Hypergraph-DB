@@ -205,6 +205,11 @@
           total_pages: 0,
         });
         const [selectedVertex, setSelectedVertex] = useState("");
+        // Vertex requested via ?vertex=<id> (e.g. from the admin console); wins over the
+        // default "select first vertex" until the user picks something else.
+        const initialVertexRef = useRef(
+          new URLSearchParams(window.location.search).get("vertex") || ""
+        );
         const [graphData, setGraphData] = useState(null);
         const [loading, setLoading] = useState(false);
         const [loadingVertices, setLoadingVertices] = useState(false);
@@ -240,8 +245,10 @@
             setVertices(result.data);
             setPagination(result.pagination);
 
-            // If no vertex selected and data exists, select the first one
-            if (result.data.length > 0) {
+            // Select the requested vertex, otherwise the first one
+            if (initialVertexRef.current) {
+              setSelectedVertex(initialVertexRef.current);
+            } else if (result.data.length > 0) {
               setSelectedVertex(result.data[0].id);
             }
           } catch (err) {
@@ -282,6 +289,7 @@
 
         // Load when page changes
         const handlePageChange = (newPage) => {
+          initialVertexRef.current = "";
           loadVertices(newPage, searchTerm, sortBy, sortOrder);
         };
 
@@ -316,6 +324,7 @@
           "data",
           "weight",
           "source_id",
+          "cluster",
         ]);
 
         // Convert data to G6 Graph format
@@ -638,7 +647,10 @@
                     type="text"
                     placeholder="Search vertex ID, type or description..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      initialVertexRef.current = "";
+                      setSearchTerm(e.target.value);
+                    }}
                     className="w-full px-4 py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
                   />
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -725,7 +737,10 @@
                             ? "bg-primary-50 border-l-4 border-l-primary-500 shadow-md"
                             : ""
                         }`}
-                        onClick={() => setSelectedVertex(vertex.id)}
+                        onClick={() => {
+                          initialVertexRef.current = "";
+                          setSelectedVertex(vertex.id);
+                        }}
                       >
                         <div className="font-bold text-gray-800 mb-2 flex items-center">
                           {vertex.id}

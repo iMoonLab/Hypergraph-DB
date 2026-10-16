@@ -170,7 +170,11 @@ class HypergraphAPIHandler(http.server.BaseHTTPRequestHandler):
         hg = self.hypergraph_db
 
         if not hg.has_v(vertex_id):
-            return {"error": f"Vertex {vertex_id} not found"}
+            # Query params are always strings; match non-string ids (e.g. ints) by str()
+            match = next((v for v in hg.all_v if str(v) == vertex_id), None)
+            if match is None:
+                return {"error": f"Vertex {vertex_id} not found"}
+            vertex_id = match
 
         # Get all neighbor hyperedges of the vertex
         neighbor_edges = hg.nbr_e_of_v(vertex_id)
