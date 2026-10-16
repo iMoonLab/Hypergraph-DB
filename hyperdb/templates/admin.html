@@ -65,7 +65,7 @@
           statVertices: "Vertices", statEdges: "Hyperedges", statAvgDegree: "Avg. vertex degree", statMaxDegree: "Max vertex degree",
           statAvgSize: "Avg. hyperedge size", statMaxSize: "Max hyperedge size", statIsolated: "Isolated vertices",
           degreeDist: "Vertex degree distribution", sizeDist: "Hyperedge size distribution", histDegree: "degree", histSize: "size",
-          topVertices: "Top vertices by degree", entityTypes: "Entity types", attributeKeys: "Attribute keys",
+          edgeTypes: "Hyperedge types", entityTypes: "Entity types", attributeKeys: "Attribute keys",
           newVertex: "+ New vertex", searchVertices: "Search id or attributes...", allEntityTypes: "All entity types",
           sortDegreeDesc: "Degree ↓", sortDegreeAsc: "Degree ↑", sortIdAsc: "ID A→Z", sortIdDesc: "ID Z→A",
           colId: "ID", colDegree: "Degree", colEntityType: "Entity type", colAttributes: "Attributes", colVertices: "Vertices", colSize: "Size",
@@ -76,7 +76,7 @@
           vertexTitle: ({ id }) => <>Vertex <span className="text-primary-600">{id}</span></>,
           degree: "Degree", neighbors: "Neighbors", openViewer: "Open graph viewer ↗",
           incidentEdges: "Incident hyperedges ({n})", first200: " — showing first 200", isolated: "This vertex is isolated.",
-          newEdge: "+ New hyperedge", searchEdges: "Search vertices or attributes...",
+          newEdge: "+ New hyperedge", searchEdges: "Search vertices or attributes...", allEdgeTypes: "All hyperedge types",
           sortSizeDesc: "Size ↓", sortSizeAsc: "Size ↑", sortVerticesAsc: "Vertices A→Z", more: "+{n} more",
           pickTwo: "Pick at least 2 vertices", searchToAdd: "Search vertices to add...", deg: "deg {n}", noMatch: "No matching vertices",
           newEdgeTitle: "New hyperedge", edgeCreated: "Hyperedge created", edgeSaved: "Hyperedge saved", edgeDeleted: "Hyperedge deleted",
@@ -105,7 +105,7 @@
           statVertices: "实体数", statEdges: "超边数", statAvgDegree: "实体平均度", statMaxDegree: "实体最大度",
           statAvgSize: "超边平均大小", statMaxSize: "超边最大大小", statIsolated: "孤立实体",
           degreeDist: "实体度分布", sizeDist: "超边大小分布", histDegree: "度", histSize: "大小",
-          topVertices: "度数最高的实体", entityTypes: "实体类型", attributeKeys: "属性字段",
+          edgeTypes: "超边类型", entityTypes: "实体类型", attributeKeys: "属性字段",
           newVertex: "+ 新建实体", searchVertices: "搜索 ID 或属性...", allEntityTypes: "全部实体类型",
           sortDegreeDesc: "度数 ↓", sortDegreeAsc: "度数 ↑", sortIdAsc: "ID A→Z", sortIdDesc: "ID Z→A",
           colId: "ID", colDegree: "度数", colEntityType: "实体类型", colAttributes: "属性", colVertices: "实体", colSize: "大小",
@@ -116,7 +116,7 @@
           vertexTitle: ({ id }) => <>实体 <span className="text-primary-600">{id}</span></>,
           degree: "度数", neighbors: "邻居数", openViewer: "在超图可视化中打开 ↗",
           incidentEdges: "关联超边（{n}）", first200: " — 仅显示前 200 条", isolated: "这是一个孤立实体。",
-          newEdge: "+ 新建超边", searchEdges: "搜索实体或属性...",
+          newEdge: "+ 新建超边", searchEdges: "搜索实体或属性...", allEdgeTypes: "全部超边类型",
           sortSizeDesc: "大小 ↓", sortSizeAsc: "大小 ↑", sortVerticesAsc: "实体 A→Z", more: "+{n} 个",
           pickTwo: "至少选择 2 个实体", searchToAdd: "搜索要添加的实体...", deg: "度 {n}", noMatch: "没有匹配的实体",
           newEdgeTitle: "新建超边", edgeCreated: "超边已创建", edgeSaved: "超边已保存", edgeDeleted: "超边已删除",
@@ -147,6 +147,10 @@
         if (typeof msg === "function") return msg(vars);
         return msg.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
       }
+      // Display labels of the database (info.labels, from <name>.labels.json): {lang: {entity_type|edge_type|key: {value: label}}}.
+      // Only what is shown changes; filters and API calls keep the raw values.
+      let currentLabels = {};
+      const lbl = (kind, value) => currentLabels[currentLang]?.[kind]?.[value] ?? value;
 
       const fmtId = (id) => (typeof id === "string" ? id : JSON.stringify(id));
       const fmtNum = (n) => (typeof n === "number" ? n.toLocaleString() : n);
@@ -364,7 +368,7 @@
         );
       }
 
-      function RankList({ items, onClick }) {
+      function RankList({ items, onClick, label = (k) => k }) {
         if (!items || items.length === 0) return <div className="text-sm text-gray-400">{t("noData")}</div>;
         const max = Math.max(...items.map(([, c]) => c));
         return (
@@ -372,7 +376,7 @@
             {items.map(([k, c]) => (
               <div key={k} className={`text-sm ${onClick ? "cursor-pointer" : ""}`} onClick={() => onClick && onClick(k)}>
                 <div className="flex justify-between mb-0.5">
-                  <span className="text-gray-700 truncate mr-2">{k}</span>
+                  <span className="text-gray-700 truncate mr-2" title={k}>{label(k)}</span>
                   <span className="text-gray-500 tabular-nums">{fmtNum(c)}</span>
                 </div>
                 <div className="h-1.5 bg-gray-100 rounded">
@@ -385,7 +389,7 @@
       }
 
       // ------------------------------------------------------------------ Overview page
-      function Overview({ version, openVertex, gotoVertices }) {
+      function Overview({ version, gotoVertices, gotoEdges }) {
         const [stats, setStats] = useState(null);
         const [error, setError] = useState(null);
         useEffect(() => {
@@ -421,29 +425,24 @@
               </Card>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card title={t("topVertices")}>
-                {stats.top_vertices.length === 0 ? (
-                  <div className="text-sm text-gray-400">{t("noData")}</div>
-                ) : (
-                  <RankList items={stats.top_vertices.map((v) => [fmtId(v.id), v.degree])}
-                    onClick={(k) => openVertex(stats.top_vertices.find((v) => fmtId(v.id) === k).id)} />
-                )}
+              <Card title={t("edgeTypes")}>
+                <RankList items={stats.edge_types} label={(k) => lbl("edge_type", k)} onClick={(t) => gotoEdges({ edge_type: t })} />
               </Card>
               <Card title={t("entityTypes")}>
-                <RankList items={stats.entity_types} onClick={(t) => gotoVertices({ entity_type: t })} />
+                <RankList items={stats.entity_types} label={(k) => lbl("entity_type", k)} onClick={(t) => gotoVertices({ entity_type: t })} />
               </Card>
               <Card title={t("attributeKeys")}>
                 <div className="text-xs font-semibold text-gray-500 mb-2 uppercase">{t("vertices")}</div>
                 <div className="flex flex-wrap gap-1.5 mb-4">
                   {stats.vertex_keys.map(([k, c]) => (
-                    <span key={k} className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{k} <span className="text-gray-400">{fmtNum(c)}</span></span>
+                    <span key={k} title={k} className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{lbl("key", k)} <span className="text-gray-400">{fmtNum(c)}</span></span>
                   ))}
                   {stats.vertex_keys.length === 0 && <span className="text-sm text-gray-400">{t("none")}</span>}
                 </div>
                 <div className="text-xs font-semibold text-gray-500 mb-2 uppercase">{t("hyperedges")}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {stats.edge_keys.map(([k, c]) => (
-                    <span key={k} className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{k} <span className="text-gray-400">{fmtNum(c)}</span></span>
+                    <span key={k} title={k} className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">{lbl("key", k)} <span className="text-gray-400">{fmtNum(c)}</span></span>
                   ))}
                   {stats.edge_keys.length === 0 && <span className="text-sm text-gray-400">{t("none")}</span>}
                 </div>
@@ -482,7 +481,7 @@
               <Input placeholder={t("searchVertices")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-72" />
               <Select value={filters.entity_type || ""} onChange={(e) => setFilters({ ...filters, entity_type: e.target.value, page: 1 })}>
                 <option value="">{t("allEntityTypes")}</option>
-                {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                {types.map((t) => <option key={t} value={t}>{lbl("entity_type", t)}</option>)}
               </Select>
               <Select
                 value={`${filters.sort_by || "degree"}:${filters.sort_order || "desc"}`}
@@ -513,7 +512,7 @@
                     <tr key={fmtId(v.id)} className="border-t border-gray-100 hover:bg-primary-50/50 cursor-pointer" onClick={() => openVertex(v.id)}>
                       <td className="px-3 py-2 font-medium text-gray-800 max-w-xs truncate">{fmtId(v.id)}</td>
                       <td className="px-3 py-2 tabular-nums">{v.degree}</td>
-                      <td className="px-3 py-2 text-gray-600 truncate max-w-[10rem]">{v.entity_type}</td>
+                      <td className="px-3 py-2 text-gray-600 truncate max-w-[10rem]" title={v.entity_type}>{lbl("entity_type", v.entity_type)}</td>
                       <td className="px-3 py-2 text-gray-500 font-mono text-xs truncate max-w-md">{v.preview}</td>
                     </tr>
                   ))}
@@ -658,11 +657,14 @@
       }
 
       // ------------------------------------------------------------------ Hyperedge pages
-      function EdgesPage({ version, openEdge, onCreate, openVertex }) {
-        const [filters, setFilters] = useState({ page: 1, sort_by: "size", sort_order: "desc" });
-        const [search, setSearch] = useState("");
+      function EdgesPage({ version, filters, setFilters, openEdge, onCreate, openVertex }) {
+        const [search, setSearch] = useState(filters.search || "");
         const [result, setResult] = useState(null);
         const [error, setError] = useState(null);
+        const [types, setTypes] = useState([]);
+        useEffect(() => {
+          api("/api/admin/stats").then((s) => setTypes(s.edge_types.map(([t]) => t))).catch(() => {});
+        }, [version]);
         useEffect(() => {
           const t = setTimeout(() => search !== (filters.search || "") && setFilters({ ...filters, search, page: 1 }), 300);
           return () => clearTimeout(t);
@@ -677,6 +679,12 @@
           <Card title={t("navEdges")} actions={<Button variant="primary" onClick={onCreate}>{t("newEdge")}</Button>}>
             <div className="flex flex-wrap gap-2 mb-4">
               <Input placeholder={t("searchEdges")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-72" />
+              {(types.length > 0 || filters.edge_type) && (
+                <Select value={filters.edge_type || ""} onChange={(e) => setFilters({ ...filters, edge_type: e.target.value, page: 1 })}>
+                  <option value="">{t("allEdgeTypes")}</option>
+                  {types.map((ty) => <option key={ty} value={ty}>{lbl("edge_type", ty)}</option>)}
+                </Select>
+              )}
               <Select
                 value={`${filters.sort_by}:${filters.sort_order}`}
                 onChange={(e) => {
@@ -756,7 +764,7 @@
                   onClick={() => !isSel(v.id) && setSelected([...selected, v.id])}
                 >
                   <span className="truncate">{fmtId(v.id)}</span>
-                  <span className="text-xs text-gray-400">{v.entity_type} · {t("deg", { n: v.degree })}</span>
+                  <span className="text-xs text-gray-400">{lbl("entity_type", v.entity_type)} · {t("deg", { n: v.degree })}</span>
                 </div>
               ))}
               {options.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">{t("noMatch")}</div>}
@@ -940,17 +948,21 @@
         ["graph", "navGraph", "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"],
       ];
 
+      const EDGE_FILTERS = { page: 1, sort_by: "size", sort_order: "desc" };
+
       function App() {
         const [page, setPage] = useState(() => location.hash.slice(1) || "overview");
         const [info, setInfo] = useState(null);
         const [version, setVersion] = useState(0);
         const [vertexFilters, setVertexFilters] = useState({ page: 1 });
+        const [edgeFilters, setEdgeFilters] = useState(EDGE_FILTERS);
         const [stack, setStack] = useState([]); // open detail modals: {type, id|vertices}
         const [modal, setModal] = useState(null); // "newVertex" | "newEdge"
         const [confirmState, setConfirmState] = useState(null);
         const [toasts, setToasts] = useState([]);
         const [lang, setLang] = useState(detectLang);
         currentLang = lang;
+        currentLabels = info?.labels || {};
         useEffect(() => {
           document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
           try { localStorage.setItem("hgdb-admin-lang", lang); } catch (e) {}
@@ -1054,15 +1066,17 @@
               </header>
               <div className={`flex-1 overflow-y-auto ${page === "graph" ? "" : "p-6"}`}>
                 {page === "overview" && (
-                  <Overview version={version} openVertex={openVertex}
-                    gotoVertices={(f) => { setVertexFilters({ page: 1, ...f }); setPage("vertices"); }} />
+                  <Overview version={version}
+                    gotoVertices={(f) => { setVertexFilters({ page: 1, ...f }); setPage("vertices"); }}
+                    gotoEdges={(f) => { setEdgeFilters({ ...EDGE_FILTERS, ...f }); setPage("edges"); }} />
                 )}
                 {page === "vertices" && (
                   <VerticesPage version={version} filters={vertexFilters} setFilters={setVertexFilters}
                     openVertex={openVertex} onCreate={() => setModal("newVertex")} />
                 )}
                 {page === "edges" && (
-                  <EdgesPage version={version} openEdge={openEdge} openVertex={openVertex} onCreate={() => setModal("newEdge")} />
+                  <EdgesPage version={version} filters={edgeFilters} setFilters={setEdgeFilters}
+                    openEdge={openEdge} openVertex={openVertex} onCreate={() => setModal("newEdge")} />
                 )}
                 {page === "data" && <DataPage info={info} onChanged={onChanged} notify={notify} confirm={confirm} save={save} />}
                 {page === "graph" && <iframe key={version} src="/viewer" className="w-full h-full border-0" />}

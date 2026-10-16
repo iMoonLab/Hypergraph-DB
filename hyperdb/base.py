@@ -301,7 +301,14 @@ class BaseHypergraphDB:
 
         return draw_hypergraph(hypergraph_db=self, port=port, open_browser=open_browser, blocking=blocking)
 
-    def admin(self, port: int = 8900, open_browser: bool = True, blocking: bool = True, host: str = "127.0.0.1"):
+    def admin(
+        self,
+        port: int = 8900,
+        open_browser: bool = True,
+        blocking: bool = True,
+        host: str = "127.0.0.1",
+        labels=None,
+    ):
         """
         Open the web admin console for the current HyperDB instance
 
@@ -310,10 +317,14 @@ class BaseHypergraphDB:
             ``open_browser``: Whether to automatically open the browser, defaults to True
             ``blocking``: Whether to block the main thread, defaults to True. Set to False for non-blocking mode.
             ``host``: Interface to bind, defaults to 127.0.0.1. The console has no authentication.
+            ``labels``: Display labels for entity types, hyperedge types and attribute names per language
+                (dict or JSON file path). Defaults to ``<name>.labels.json`` next to the storage file.
 
         Returns:
             HypergraphAdmin instance
         """
         from .admin import run_admin
 
-        return run_admin(hypergraph_db=self, host=host, port=port, open_browser=open_browser, blocking=blocking)
+        return run_admin(
+            hypergraph_db=self, host=host, port=port, open_browser=open_browser, blocking=blocking, labels=labels
+        )

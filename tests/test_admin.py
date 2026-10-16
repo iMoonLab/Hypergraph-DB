@@ -49,6 +49,11 @@ def test_info_and_stats(server):
     assert stats["max_degree"] == 2
     assert stats["edge_size_hist"] == [[2, 1], [4, 1]]
     assert stats["entity_types"][0] == ["person", 3]
+    assert stats["edge_types"] == []
+
+    server.hypergraph_db.update_e((1, 2), {"type": "social"})
+    _, stats = call(server, "/api/admin/stats")
+    assert stats["edge_types"] == [["social", 1]]
 
 
 def test_list_vertices_and_edges(server):
@@ -66,6 +71,10 @@ def test_list_vertices_and_edges(server):
 
     _, res = call(server, "/api/admin/edges?vertex=3")
     assert res["pagination"]["total"] == 1
+
+    server.hypergraph_db.update_e((1, 2), {"type": "social"})
+    _, res = call(server, "/api/admin/edges?edge_type=social")
+    assert [e["size"] for e in res["data"]] == [2]
 
 
 def test_vertex_crud(server):
@@ -147,3 +156,30 @@ def test_vertex_search_ranks_id_matches_first(server):
     call(server, "/api/admin/vertex/upsert", {"create": True, "id": "bobby"})
     _, res = call(server, "/api/admin/vertices?search=bob")
     assert [v["id"] for v in res["data"]] == ["bobby", 2]
+
+
+def test_labels(tmp_path):
+    db = HypergraphDB(storage_file=tmp_path / "labeled.hgdb")
+    db.add_v(1, {"entity_type": "person"})
+    labels = {"zh": {"entity_type": {"person": "人物"}}}
+
+    # Default: <name>.labels.json next to the storage file, re-read on every /info
+    admin = HypergraphAdmin(db, port=0)
+    admin.start_server(open_browser=False)
+    try:
+        assert call(admin, "/api/admin/info")[1]["labels"] == {}
+        (tmp_path / "labeled.labels.json").write_text(json.dumps(labels), encoding="utf-8")
+        assert call(admin, "/api/admin/info")[1]["labels"] == labels
+        (tmp_path / "labeled.labels.json").write_text("not json", encoding="utf-8")
+        assert call(admin, "/api/admin/info")[1]["labels"] == {}
+    finally:
+        admin.stop_server()
+
+    # Explicit labels win over the file
+    explicit = {"en": {"key": {"entity_type": "Kind"}}}
+    admin = HypergraphAdmin(db, port=0, labels=explicit)
+    admin.start_server(open_browser=False)
+    try:
+        assert call(admin, "/api/admin/info")[1]["labels"] == explicit
+    finally:
+        admin.stop_server()
