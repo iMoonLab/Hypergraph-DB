@@ -79,10 +79,16 @@
       const LAYOUT_THRESHOLD = 100;
       const EDGE_SEPARATOR = "|#|";
 
+      // 超边轮廓的透明度与线宽：常态 / 点击选中 / 其他超边被选中时变淡
+      const BUBBLE_NORMAL = { fillOpacity: 0.2, strokeOpacity: 0.2, lineWidth: 1 };
+      const BUBBLE_HIGHLIGHT = { fillOpacity: 0.45, strokeOpacity: 1, lineWidth: 3 };
+      const BUBBLE_DIMMED = { fillOpacity: 0.03, strokeOpacity: 0.05, lineWidth: 1 };
+
       // Utility functions
       const createBubbleStyle = (baseColor) => ({
         fill: baseColor,
         stroke: baseColor,
+        ...BUBBLE_NORMAL,
         maxRoutingIterations: 100,
         maxMarchingIterations: 20,
         pixelGroup: 4,
@@ -437,6 +443,53 @@
         return null;
       };
 
+      // 点击选中的超边（轮廓或连线）→ { key, members, item }；null 表示未选中
+      const selectionOf = (e, data) => {
+        if (e.targetType === "bubble-sets") {
+          const { key, edge = {}, members } = e.target.options || {};
+          const list = Array.isArray(members) ? members : [];
+          return { key, members: list, item: { ...edge, members: list } };
+        }
+        if (e.targetType === "edge") {
+          const edge = data?.data.edges.find((d) => d.id === e.target.id);
+          if (!edge) return null;
+          const { source, target, ...rest } = edge;
+          return {
+            key: edge.id,
+            members: [source, target],
+            item: { ...rest, members: [source, target] },
+          };
+        }
+        return null;
+      };
+
+      // 高亮选中的超边及其成员实体，其余实体、连线、超边轮廓变淡；selection 为 null 时全部恢复
+      const applySelection = (graph, data, selection) => {
+        const members = new Set(selection?.members || []);
+        const states = {};
+        data.data.nodes.forEach((n) => {
+          states[n.id] = !selection ? [] : members.has(n.id) ? ["highlight"] : ["inactive"];
+        });
+        data.data.edges.forEach((d) => {
+          states[d.id] = !selection ? [] : d.id === selection.key ? ["highlight"] : ["inactive"];
+        });
+        graph.setElementState(states, false);
+        graph.setPlugins((plugins) =>
+          plugins.map((p) =>
+            p.type !== "bubble-sets"
+              ? p
+              : {
+                  ...p,
+                  ...(!selection
+                    ? BUBBLE_NORMAL
+                    : p.key === selection.key
+                    ? BUBBLE_HIGHLIGHT
+                    : BUBBLE_DIMMED),
+                }
+          )
+        );
+      };
+
       function HypergraphViewer() {
         const containerRef = useRef(null);
         const graphRef = useRef(null);
@@ -470,6 +523,8 @@
         const [hoverHyperedge, setHoverHyperedge] = useState(null);
         const [hoverNode, setHoverNode] = useState(null);
         const [tip, setTip] = useState(null);
+        // 选中期间侧边栏固定显示该超边，不随悬停变化
+        const selectedRef = useRef(null);
         const [lang, setLang] = useState(detectLang);
         currentLang = lang;
         useEffect(() => {
@@ -696,6 +751,15 @@
                 size: hyperData.nodes.length > LAYOUT_THRESHOLD ? 15 : 20,
                 labelText: (d) => d.id,
                 fill: (d) => getNodeColor(d, selectedVertex, entityTypeColors),
+                // 显式写出被状态覆盖的样式：G6 移除状态时只回到这里的值，不写就会保留状态样式
+                opacity: 1,
+                lineWidth: 0,
+                labelFontWeight: "normal",
+              },
+              // 点击超边高亮：成员实体 highlight，其余 inactive
+              state: {
+                highlight: { stroke: "#6d28d9", lineWidth: 3, labelFontWeight: "bold" },
+                inactive: { opacity: 0.15 },
               },
             },
             edge: {
@@ -703,6 +767,11 @@
                 size: isGraph ? 3 : 2,
                 stroke: "#a68fff",
                 lineWidth: 1,
+                opacity: 1,
+              },
+              state: {
+                highlight: { stroke: "#6d28d9", lineWidth: 3 },
+                inactive: { opacity: 0.1 },
               },
             },
             layout: {
@@ -747,8 +816,19 @@
           graphRef.current = graph;
           graphRef.current.render();
 
+          // 点击超边：选中并高亮；再点同一条或点空白处取消
+          graph.on("click", (e) => {
+            if (e.targetType === "node") return;
+            const next = selectionOf(e, graphDataFormatted);
+            const selection =
+              next && next.key !== selectedRef.current?.key ? next : null;
+            selectedRef.current = selection;
+            applySelection(graph, graphDataFormatted, selection);
+            if (selection) setHoverHyperedge(selection.item);
+          });
+
           graph.on("pointermove", (e) => {
-            if (e.targetType === "bubble-sets") {
+            if (e.targetType === "bubble-sets" && !selectedRef.current) {
               const target = e.target.options;
               const newHyperedge = {
                 ...target.edge,
@@ -807,6 +887,7 @@
             }
             setHoverHyperedge(null);
             setTip(null);
+            selectedRef.current = null;
           };
         }, [graphDataFormatted, visualizationMode]);
 
