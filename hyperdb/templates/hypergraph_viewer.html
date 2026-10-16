@@ -249,8 +249,8 @@
         "cluster",
       ]);
 
-      // 悬停卡片中超边优先显示的属性、不显示的属性（类型看 type），以及最多显示的属性个数；侧边栏显示全部属性
-      const HYPEREDGE_PRIORITY = ["description", "type", "summary", "members"];
+      // 悬停卡片中超边优先显示的属性、有 type 时不显示的属性（类型看 type），以及最多显示的属性个数；侧边栏显示全部属性
+      const HYPEREDGE_PRIORITY = ["description", "type", "summary", "keywords", "members"];
       const HYPEREDGE_TIP_EXCLUDED = ["keywords"];
       const HYPEREDGE_FIELD_LIMIT = 5;
       const TIP_OFFSET = 12;
@@ -417,7 +417,8 @@
           title: item.members.length === 2 ? "edge" : "hyperedge",
           item,
           priority: HYPEREDGE_PRIORITY,
-          exclude: HYPEREDGE_TIP_EXCLUDED,
+          // 没有 type 的超边（如 Hyper-RAG 原版抽取的图）仍显示 keywords
+          exclude: item.type ? HYPEREDGE_TIP_EXCLUDED : [],
           limit: HYPEREDGE_FIELD_LIMIT,
         });
         if (e.targetType === "edge") {
