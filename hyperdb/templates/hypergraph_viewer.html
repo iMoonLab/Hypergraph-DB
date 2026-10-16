@@ -6,6 +6,9 @@
     <title>Hypergraph Visualization</title>
     <!-- npm 版 G6，超边轮廓交互由下方 HoverBubbleSets 插件补齐 -->
     <script src="https://unpkg.com/@antv/g6@5.0.49/dist/g6.min.js"></script>
+    <!-- 超图布局（templates/hypergraph_layout.js，由 G6 仓库 hypergraph/build-hypergraph-layout.mjs 生成），
+         加载即注册为 'hypergraph' 布局；加载失败时下方布局配置退回 force -->
+    <script src="hypergraph_layout.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -43,7 +46,8 @@
         CommonEvent.CLICK,
       ];
 
-      class HoverBubbleSets extends BubbleSets {
+      // hypergraph_layout.js 提供的 KeyBoundsBubbleSets 支持 memberBoundsType: 'key'（只圈节点、不包裹标签）
+      class HoverBubbleSets extends (window.KeyBoundsBubbleSets || BubbleSets) {
         constructor(context, options) {
           super(context, { zIndex: -1, pointerEvents: "all", ...options });
           this.layouting = false;
@@ -177,6 +181,9 @@
         return colorMap;
       };
       const LAYOUT_THRESHOLD = 100;
+      // hypergraph_layout.js 未加载（如服务端版本过旧）时退回 force 布局，避免实体全部叠在一点
+      const HAS_HYPERGRAPH_LAYOUT = !!window.HypergraphLayout;
+      if (!HAS_HYPERGRAPH_LAYOUT) console.warn("hypergraph_layout.js not loaded, falling back to the force layout");
       const EDGE_SEPARATOR = "|#|";
 
       // 超边轮廓的透明度与线宽：常态 / 点击选中 / 其他超边被选中时变淡
@@ -192,8 +199,8 @@
         maxRoutingIterations: 100,
         maxMarchingIterations: 20,
         pixelGroup: 4,
-        edgeR0: 10,
-        edgeR1: 60,
+        edgeR0: 30,
+        edgeR1: 50,
         nodeR0: 1,
         nodeR1: 5,
         morphBuffer: 10,
@@ -804,6 +811,8 @@
                 key: `bubble-sets-${key}`,
                 type: HOVER_BUBBLE_SETS,
                 members: nodes,
+                // 只圈节点，不包裹标签
+                memberBoundsType: "key",
                 weight: edge.weight || nodes.length,
                 description: edge.description || edge.summary || "",
                 edge: edge,
@@ -874,15 +883,33 @@
                 inactive: { opacity: 0.1 },
               },
             },
-            layout: {
-              type:
-                hyperData.nodes.length > LAYOUT_THRESHOLD ? "force" : "force",
-              clustering: !isGraph,
-              preventOverlap: true,
-              nodeClusterBy: isGraph ? undefined : "cluster",
-              gravity: 50,
-              linkDistance: 50,
-            },
+            layout: isGraph
+              ? {
+                  type: "force",
+                  preventOverlap: true,
+                  gravity: 50,
+                  linkDistance: 50,
+                }
+              : !HAS_HYPERGRAPH_LAYOUT
+              ? {
+                  type: "force",
+                  clustering: true,
+                  preventOverlap: true,
+                  nodeClusterBy: "cluster",
+                  gravity: 50,
+                  linkDistance: 50,
+                }
+              : {
+                  // 超图布局：同一超边的实体挨在一起；2 元超边（连线）也参与。以选中实体为中心呈花瓣状排布
+                  type: "hypergraph",
+                  hyperedges: hyperData.hyperEdges,
+                  centerNode: hyperData.nodes.some((n) => n.id === selectedVertex) ? selectedVertex : undefined,
+                  nodeSpacing: 50,
+                  // 标签互不重叠：与节点样式的 labelText、默认字号 12 一致
+                  preventLabelOverlap: true,
+                  labelText: (d) => d.id,
+                  labelFontSize: 12,
+                },
             autoFit: "center",
           };
         }, [graphData, selectedVertex, visualizationMode, entityTypeColors]);
@@ -898,7 +925,7 @@
             data: graphDataFormatted.data,
             behaviors: ["zoom-canvas", "drag-canvas", "drag-element"],
             autoFit: "center",
-            animate: false,
+            animation: false,
             node: graphDataFormatted.node,
             edge: graphDataFormatted.edge,
             layout: graphDataFormatted.layout,
