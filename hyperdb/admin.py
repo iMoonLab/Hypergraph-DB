@@ -79,7 +79,7 @@ class HypergraphAdminHandler(HypergraphAPIHandler):
         elif path == "/viewer":
             self._send_html(self._get_html_template())
         elif path == "/api/admin/hif":
-            self._handle(lambda: self.hypergraph_db.to_hif(), download="hypergraph.hif.json")
+            self._handle(self._export_hif, download="hypergraph.hif.json")
         elif path.startswith("/api/admin/"):
             routes = {
                 "/api/admin/info": self._info,
@@ -414,10 +414,20 @@ class HypergraphAdminHandler(HypergraphAPIHandler):
         self.state.last_saved = time.time()
         return self._info()
 
+    def _hif_method(self, name: str):
+        # HIF support lives on HypergraphDB, not on BaseHypergraphDB
+        method = getattr(self.hypergraph_db, name, None)
+        if method is None:
+            raise AdminAPIError(f"{type(self.hypergraph_db).__name__} does not support HIF", 501)
+        return method
+
+    def _export_hif(self) -> Dict[str, Any]:
+        return self._hif_method("to_hif")()
+
     def _import_hif(self, body: Dict[str, Any]) -> Dict[str, Any]:
         if "incidences" not in body:
             raise AdminAPIError("Invalid HIF data: missing 'incidences'")
-        if not self.hypergraph_db.from_hif(body):
+        if not self._hif_method("from_hif")(body):
             raise AdminAPIError("Failed to import HIF data")
         self._mark_dirty()
         return self._info()

@@ -14,7 +14,7 @@ from .hypergraph import HypergraphDB
 class HypergraphAPIHandler(http.server.BaseHTTPRequestHandler):
     """HTTP request handler with API endpoints"""
 
-    def __init__(self, hypergraph_db: HypergraphDB, *args, **kwargs):
+    def __init__(self, hypergraph_db: BaseHypergraphDB, *args, **kwargs):
         self.hypergraph_db = hypergraph_db
         super().__init__(*args, **kwargs)
 
