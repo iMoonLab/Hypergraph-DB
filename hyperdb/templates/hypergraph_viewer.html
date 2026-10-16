@@ -4,10 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hypergraph Visualization</title>
-    <!-- <script src="https://unpkg.com/@antv/g6@5/dist/g6.min.js"></script> -->
-    <!-- Using modified g6 -->
-    <script src="http://hub.dappwind.com/static/g6.min.js"></script>
-    <!-- <script src="./g6.min.js"></script> -->
+    <!-- npm 版 G6，超边轮廓交互由下方 HoverBubbleSets 插件补齐 -->
+    <script src="https://unpkg.com/@antv/g6@5.0.49/dist/g6.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -27,7 +25,109 @@
 
     <script type="text/babel">
       const { useState, useEffect, useLayoutEffect, useMemo, useRef } = React;
-      const { Graph } = window.G6;
+      const { Graph, BubbleSets, CommonEvent, ExtensionCategory, GraphEvent, register } = window.G6;
+
+      // ------------------------------------------------------------------ hover-bubble-sets
+      // 可交互的 bubble-sets 插件（与 HypergraphViewer、Hyper-RAG web-ui 同一实现），在原版 BubbleSets 上补齐：
+      // - 超边轮廓接收鼠标事件，在 graph 上派发 pointerover / pointermove / pointerleave / click，
+      //   事件的 targetType 为 'bubble-sets'，target 为该插件的 options（含 key、members 与调用方附加的数据）；
+      // - 布局进行中隐藏轮廓，布局结束后按节点新位置重画；
+      // - 首次渲染完成前被销毁时不再因 shape 为空而抛异常；
+      // - 配置更新（graph.setPlugins，如点击高亮改透明度）后立即应用到已画好的轮廓，原版 update 只合并配置、不重画。
+      const HOVER_BUBBLE_SETS = "hover-bubble-sets";
+      const BUBBLE_SETS_TARGET = "bubble-sets";
+      const SHAPE_EVENTS = [
+        CommonEvent.POINTER_OVER,
+        CommonEvent.POINTER_MOVE,
+        CommonEvent.POINTER_LEAVE,
+        CommonEvent.CLICK,
+      ];
+
+      class HoverBubbleSets extends BubbleSets {
+        constructor(context, options) {
+          super(context, { zIndex: -1, pointerEvents: "all", ...options });
+          this.layouting = false;
+          this.boundKey = null;
+          this.onBeforeLayout = () => {
+            this.layouting = true;
+            this.setContourVisible(false);
+          };
+          this.onAfterLayout = () => {
+            this.layouting = false;
+            this.drawBubbleSets();
+          };
+          this.forward = (event) => {
+            this.context.graph.emit(event.type, {
+              ...event,
+              target: { ...this.options, id: this.options.key, options: this.options },
+              targetType: BUBBLE_SETS_TARGET,
+              originalTarget: event.target,
+            });
+          };
+          const { graph } = this.context;
+          // 基类构造时已把原始 drawBubbleSets 绑定到 AFTER_RENDER，换成带事件绑定的版本
+          graph.off(GraphEvent.AFTER_RENDER, this.drawBubbleSets);
+          const baseDraw = this.drawBubbleSets;
+          this.drawBubbleSets = () => {
+            // 成员不变时基类会复用缓存路径；布局移动了节点，必须重算
+            this.init();
+            baseDraw();
+            this.bindShapeEvents();
+            this.setContourVisible(!this.layouting);
+          };
+          graph.on(GraphEvent.AFTER_RENDER, this.drawBubbleSets);
+          graph.on(GraphEvent.BEFORE_LAYOUT, this.onBeforeLayout);
+          graph.on(GraphEvent.AFTER_LAYOUT, this.onAfterLayout);
+        }
+
+        update(options) {
+          super.update(options);
+          // 只更新样式（路径 d 不在 style 中，保持不变），不重算轮廓
+          if (this.shape && !this.shape.destroyed) this.shape.update(this.parseOptions().style);
+        }
+
+        setContourVisible(visible) {
+          if (this.shape) this.shape.style.visibility = visible ? "visible" : "hidden";
+        }
+
+        bindShapeEvents() {
+          const key = this.shape?.shapeMap?.key;
+          if (!key || key === this.boundKey) return;
+          this.unbindShapeEvents();
+          key.style.pointerEvents = "all";
+          SHAPE_EVENTS.forEach((type) => key.addEventListener(type, this.forward));
+          this.boundKey = key;
+        }
+
+        unbindShapeEvents() {
+          if (!this.boundKey) return;
+          SHAPE_EVENTS.forEach((type) => this.boundKey.removeEventListener(type, this.forward));
+          this.boundKey = null;
+        }
+
+        destroy() {
+          const { graph } = this.context;
+          graph.off(GraphEvent.AFTER_RENDER, this.drawBubbleSets);
+          graph.off(GraphEvent.BEFORE_LAYOUT, this.onBeforeLayout);
+          graph.off(GraphEvent.AFTER_LAYOUT, this.onAfterLayout);
+          this.unbindShapeEvents();
+          if (!this.shape) this.shape = { destroy: () => undefined };
+          super.destroy();
+        }
+      }
+
+      register(ExtensionCategory.PLUGIN, HOVER_BUBBLE_SETS, HoverBubbleSets);
+
+      // 首次渲染完成前销毁（换数据）时，G6 在销毁元素层时抛异常；此时插件、交互、布局已销毁，补上画布销毁即可
+      const destroyGraph = (graph) => {
+        if (graph.destroyed) return;
+        try {
+          graph.destroy();
+        } catch (e) {
+          graph.context.canvas?.destroy();
+          graph.destroyed = true;
+        }
+      };
 
       // API base path
       const API_BASE = window.location.origin;
@@ -433,7 +533,7 @@
           const { source, target, ...rest } = edge;
           return hyperedge({ ...rest, members: [source, target] });
         }
-        if (e.targetType === "bubble-sets") {
+        if (e.targetType === BUBBLE_SETS_TARGET) {
           const { edge = {}, members } = e.target.options || {};
           return hyperedge({
             ...edge,
@@ -445,7 +545,7 @@
 
       // 点击选中的超边（轮廓或连线）→ { key, members, item }；null 表示未选中
       const selectionOf = (e, data) => {
-        if (e.targetType === "bubble-sets") {
+        if (e.targetType === BUBBLE_SETS_TARGET) {
           const { key, edge = {}, members } = e.target.options || {};
           const list = Array.isArray(members) ? members : [];
           return { key, members: list, item: { ...edge, members: list } };
@@ -476,7 +576,7 @@
         graph.setElementState(states, false);
         graph.setPlugins((plugins) =>
           plugins.map((p) =>
-            p.type !== "bubble-sets"
+            p.type !== HOVER_BUBBLE_SETS
               ? p
               : {
                   ...p,
@@ -702,7 +802,7 @@
 
               plugins.push({
                 key: `bubble-sets-${key}`,
-                type: "bubble-sets",
+                type: HOVER_BUBBLE_SETS,
                 members: nodes,
                 weight: edge.weight || nodes.length,
                 description: edge.description || edge.summary || "",
@@ -791,14 +891,6 @@
         useEffect(() => {
           if (!graphDataFormatted || !containerRef.current) return;
 
-          // Destroy previous graph instance and clear canvas
-          if (graphRef.current && !graphRef.current.destroyed) {
-            graphRef.current.clear();
-            if (containerRef.current) {
-              containerRef.current.innerHTML = "";
-            }
-          }
-
           const graph = new Graph({
             container: containerRef.current,
             width: containerRef.current.offsetWidth,
@@ -814,7 +906,8 @@
           });
 
           graphRef.current = graph;
-          graphRef.current.render();
+          // 实例在布局迭代中被销毁（换数据）时 render 会 reject
+          graph.render().catch(() => {});
 
           // 点击超边：选中并高亮；再点同一条或点空白处取消
           graph.on("click", (e) => {
@@ -828,7 +921,7 @@
           });
 
           graph.on("pointermove", (e) => {
-            if (e.targetType === "bubble-sets" && !selectedRef.current) {
+            if (e.targetType === BUBBLE_SETS_TARGET && !selectedRef.current) {
               const target = e.target.options;
               const newHyperedge = {
                 ...target.edge,
@@ -867,7 +960,7 @@
 
           // Add window resize listener
           const handleResize = () => {
-            if (graphRef.current && containerRef.current) {
+            if (graphRef.current && !graphRef.current.destroyed && containerRef.current) {
               graphRef.current.setSize(
                 containerRef.current.offsetWidth,
                 containerRef.current.offsetHeight
@@ -879,12 +972,9 @@
 
           return () => {
             window.removeEventListener("resize", handleResize);
-            if (graphRef.current && !graphRef.current.destroyed) {
-              graphRef.current.clear();
-            }
-            if (containerRef.current) {
-              containerRef.current.innerHTML = "";
-            }
+            // 销毁而不是 clear：clear 后力导布局仍在迭代，会更新已不存在的节点而报错
+            graphRef.current = null;
+            destroyGraph(graph);
             setHoverHyperedge(null);
             setTip(null);
             selectedRef.current = null;
