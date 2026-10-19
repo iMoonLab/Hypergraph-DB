@@ -40,11 +40,11 @@ def test_pages_served(server):
         assert b"Hypergraph Visualization" in res.read()
 
 
-def test_hypergraph_layout_served(server):
-    # 查看器页面通过 <script src="hypergraph_layout.js"> 加载超图布局，/viewer 与 / 下都解析到同一路径
-    with urllib.request.urlopen(server.url + "/hypergraph_layout.js") as res:
+def test_hypergraph_viz_served(server):
+    # 查看器页面通过 <script src="hypergraph-viz.global.js"> 加载超图渲染，/viewer 与 / 下都解析到同一路径
+    with urllib.request.urlopen(server.url + "/hypergraph-viz.global.js") as res:
         assert res.headers["Content-Type"].startswith("application/javascript")
-        assert "G6.register(G6.ExtensionCategory.LAYOUT, 'hypergraph'" in res.read().decode("utf-8")
+        assert "var HypergraphViz = " in res.read().decode("utf-8")
 
 
 def test_info_and_stats(server):

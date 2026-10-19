@@ -40,10 +40,10 @@ class HypergraphAPIHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(self._get_html_template().encode("utf-8"))
 
-        elif path == "/hypergraph_layout.js":
+        elif path == "/hypergraph-viz.global.js":
             self.send_header("Content-type", "application/javascript; charset=utf-8")
             self.end_headers()
-            self.wfile.write(self._read_static("hypergraph_layout.js"))
+            self.wfile.write(self._read_static("hypergraph-viz.global.js"))
 
         elif path == "/api/database/info":
             self.send_header("Content-type", "application/json; charset=utf-8")

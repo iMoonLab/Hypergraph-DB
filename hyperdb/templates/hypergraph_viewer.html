@@ -4,11 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hypergraph Visualization</title>
-    <!-- npm 版 G6，超边轮廓交互由下方 HoverBubbleSets 插件补齐 -->
     <script src="https://unpkg.com/@antv/g6@5.0.49/dist/g6.min.js"></script>
-    <!-- 超图布局（templates/hypergraph_layout.js，由 G6 仓库 hypergraph/build-hypergraph-layout.mjs 生成），
-         加载即注册为 'hypergraph' 布局；加载失败时下方布局配置退回 force -->
-    <script src="hypergraph_layout.js"></script>
+    <!-- 超图渲染（超图布局、只圈节点的超边轮廓、悬停与点击高亮），与 HypergraphViewer、Hyper-RAG web-ui 共用 hypergraph-viz；
+         templates/hypergraph-viz.global.js 由 HypergraphViewer/packages/hypergraph-viz 的 npm run sync:hypergraph-db 拷入 -->
+    <script src="hypergraph-viz.global.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -28,193 +27,12 @@
 
     <script type="text/babel">
       const { useState, useEffect, useLayoutEffect, useMemo, useRef } = React;
-      const { Graph, BubbleSets, CommonEvent, ExtensionCategory, GraphEvent, register } = window.G6;
-
-      // ------------------------------------------------------------------ hover-bubble-sets
-      // 可交互的 bubble-sets 插件（与 HypergraphViewer、Hyper-RAG web-ui 同一实现），在原版 BubbleSets 上补齐：
-      // - 超边轮廓接收鼠标事件，在 graph 上派发 pointerover / pointermove / pointerleave / click，
-      //   事件的 targetType 为 'bubble-sets'，target 为该插件的 options（含 key、members 与调用方附加的数据）；
-      // - 布局进行中隐藏轮廓，布局结束后按节点新位置重画；
-      // - 首次渲染完成前被销毁时不再因 shape 为空而抛异常；
-      // - 配置更新（graph.setPlugins，如点击高亮改透明度）后立即应用到已画好的轮廓，原版 update 只合并配置、不重画。
-      const HOVER_BUBBLE_SETS = "hover-bubble-sets";
-      const BUBBLE_SETS_TARGET = "bubble-sets";
-      const SHAPE_EVENTS = [
-        CommonEvent.POINTER_OVER,
-        CommonEvent.POINTER_MOVE,
-        CommonEvent.POINTER_LEAVE,
-        CommonEvent.CLICK,
-      ];
-
-      // hypergraph_layout.js 提供的 KeyBoundsBubbleSets 支持 memberBoundsType: 'key'（只圈节点、不包裹标签）
-      class HoverBubbleSets extends (window.KeyBoundsBubbleSets || BubbleSets) {
-        constructor(context, options) {
-          super(context, { zIndex: -1, pointerEvents: "all", ...options });
-          this.layouting = false;
-          this.boundKey = null;
-          this.onBeforeLayout = () => {
-            this.layouting = true;
-            this.setContourVisible(false);
-          };
-          this.onAfterLayout = () => {
-            this.layouting = false;
-            this.drawBubbleSets();
-          };
-          this.forward = (event) => {
-            this.context.graph.emit(event.type, {
-              ...event,
-              target: { ...this.options, id: this.options.key, options: this.options },
-              targetType: BUBBLE_SETS_TARGET,
-              originalTarget: event.target,
-            });
-          };
-          const { graph } = this.context;
-          // 基类构造时已把原始 drawBubbleSets 绑定到 AFTER_RENDER，换成带事件绑定的版本
-          graph.off(GraphEvent.AFTER_RENDER, this.drawBubbleSets);
-          const baseDraw = this.drawBubbleSets;
-          this.drawBubbleSets = () => {
-            // 成员不变时基类会复用缓存路径；布局移动了节点，必须重算
-            this.init();
-            baseDraw();
-            this.bindShapeEvents();
-            this.setContourVisible(!this.layouting);
-          };
-          graph.on(GraphEvent.AFTER_RENDER, this.drawBubbleSets);
-          graph.on(GraphEvent.BEFORE_LAYOUT, this.onBeforeLayout);
-          graph.on(GraphEvent.AFTER_LAYOUT, this.onAfterLayout);
-        }
-
-        update(options) {
-          super.update(options);
-          // 只更新样式（路径 d 不在 style 中，保持不变），不重算轮廓
-          if (this.shape && !this.shape.destroyed) this.shape.update(this.parseOptions().style);
-        }
-
-        setContourVisible(visible) {
-          if (this.shape) this.shape.style.visibility = visible ? "visible" : "hidden";
-        }
-
-        bindShapeEvents() {
-          const key = this.shape?.shapeMap?.key;
-          if (!key || key === this.boundKey) return;
-          this.unbindShapeEvents();
-          key.style.pointerEvents = "all";
-          SHAPE_EVENTS.forEach((type) => key.addEventListener(type, this.forward));
-          this.boundKey = key;
-        }
-
-        unbindShapeEvents() {
-          if (!this.boundKey) return;
-          SHAPE_EVENTS.forEach((type) => this.boundKey.removeEventListener(type, this.forward));
-          this.boundKey = null;
-        }
-
-        destroy() {
-          const { graph } = this.context;
-          graph.off(GraphEvent.AFTER_RENDER, this.drawBubbleSets);
-          graph.off(GraphEvent.BEFORE_LAYOUT, this.onBeforeLayout);
-          graph.off(GraphEvent.AFTER_LAYOUT, this.onAfterLayout);
-          this.unbindShapeEvents();
-          if (!this.shape) this.shape = { destroy: () => undefined };
-          super.destroy();
-        }
-      }
-
-      register(ExtensionCategory.PLUGIN, HOVER_BUBBLE_SETS, HoverBubbleSets);
-
-      // 首次渲染完成前销毁（换数据）时，G6 在销毁元素层时抛异常；此时插件、交互、布局已销毁，补上画布销毁即可
-      const destroyGraph = (graph) => {
-        if (graph.destroyed) return;
-        try {
-          graph.destroy();
-        } catch (e) {
-          graph.context.canvas?.destroy();
-          graph.destroyed = true;
-        }
-      };
+      const { createHypergraphView, fromKeyedEdges, pairId, typeColorsOf } = window.HypergraphViz;
 
       // API base path
       const API_BASE = window.location.origin;
       // dev mode
       // const API_BASE = "http://localhost:8080";
-
-      // Configuration constants
-      const COLORS = [
-        "#F6BD16",
-        "#00C9C9",
-        "#F08F56",
-        "#D580FF",
-        "#FF3D00",
-        "#16f69c",
-        "#004ac9",
-        "#f056d1",
-        "#a680ff",
-        "#c8ff00",
-      ];
-
-      // 6 predefined colors, cycled for different entity types
-      const ENTITY_TYPE_COLORS_PALETTE = [
-        "#00C9C9",
-        "#a68fff",
-        "#F08F56",
-        "#0d7c4f",
-        "#004ac9",
-        "#f056d1",
-      ];
-
-      const DEFAULT_NODE_COLOR = "#8b5cf6";
-
-      // Dynamically generate entity type color mapping
-      const generateEntityTypeColors = (vertices) => {
-        const entityTypes = [
-          ...new Set(vertices.map((v) => v.entity_type).filter(Boolean)),
-        ];
-        const colorMap = {};
-
-        entityTypes.forEach((entityType, index) => {
-          colorMap[entityType] =
-            ENTITY_TYPE_COLORS_PALETTE[
-              index % ENTITY_TYPE_COLORS_PALETTE.length
-            ];
-        });
-
-        return colorMap;
-      };
-      const LAYOUT_THRESHOLD = 100;
-      // hypergraph_layout.js 未加载（如服务端版本过旧）时退回 force 布局，避免实体全部叠在一点
-      const HAS_HYPERGRAPH_LAYOUT = !!window.HypergraphLayout;
-      if (!HAS_HYPERGRAPH_LAYOUT) console.warn("hypergraph_layout.js not loaded, falling back to the force layout");
-      const EDGE_SEPARATOR = "|#|";
-
-      // 超边轮廓的透明度与线宽：常态 / 点击选中 / 其他超边被选中时变淡
-      const BUBBLE_NORMAL = { fillOpacity: 0.2, strokeOpacity: 0.2, lineWidth: 1 };
-      const BUBBLE_HIGHLIGHT = { fillOpacity: 0.45, strokeOpacity: 1, lineWidth: 3 };
-      const BUBBLE_DIMMED = { fillOpacity: 0.03, strokeOpacity: 0.05, lineWidth: 1 };
-
-      // Utility functions
-      const createBubbleStyle = (baseColor) => ({
-        fill: baseColor,
-        stroke: baseColor,
-        ...BUBBLE_NORMAL,
-        maxRoutingIterations: 100,
-        maxMarchingIterations: 20,
-        pixelGroup: 4,
-        edgeR0: 30,
-        edgeR1: 50,
-        nodeR0: 1,
-        nodeR1: 5,
-        morphBuffer: 10,
-        threshold: 4,
-        memberInfluenceFactor: 1,
-        edgeInfluenceFactor: 4,
-        nonMemberInfluenceFactor: -0.8,
-        virtualEdges: true,
-      });
-
-      const getNodeColor = (node, selectedVertex, entityTypeColors) => {
-        if (node.id === selectedVertex) return "#6d28d9";
-        return entityTypeColors[node.entity_type] || DEFAULT_NODE_COLOR;
-      };
 
       const formatDescription = (description) => {
         if (!description) return "";
@@ -520,86 +338,21 @@
       };
 
       // 悬停目标 → 悬停卡片内容：顶点 → 顶点属性；连线（2 个顶点的超边）/ 超边轮廓 → 超边属性
-      const tipOf = (e, data) => {
-        if (e.targetType === "node") {
-          const node = data?.data.nodes.find((n) => n.id === e.target.id);
-          return node && { title: "node", item: node };
-        }
-        // 只有 2 个成员的超边显示为“边”
-        const hyperedge = (item) => ({
-          title: item.members.length === 2 ? "edge" : "hyperedge",
-          item,
+      const tipOf = (hit) => {
+        if (hit.kind === "node") return { title: "node", item: hit.item };
+        return {
+          title: hit.kind,
+          item: hit.item,
           priority: HYPEREDGE_PRIORITY,
           // 没有 type 的超边（如 Hyper-RAG 原版抽取的图）仍显示 keywords
-          exclude: item.type ? HYPEREDGE_TIP_EXCLUDED : [],
+          exclude: hit.item.type ? HYPEREDGE_TIP_EXCLUDED : [],
           limit: HYPEREDGE_FIELD_LIMIT,
-        });
-        if (e.targetType === "edge") {
-          const edge = data?.data.edges.find((d) => d.id === e.target.id);
-          if (!edge) return null;
-          const { source, target, ...rest } = edge;
-          return hyperedge({ ...rest, members: [source, target] });
-        }
-        if (e.targetType === BUBBLE_SETS_TARGET) {
-          const { edge = {}, members } = e.target.options || {};
-          return hyperedge({
-            ...edge,
-            members: Array.isArray(members) ? members : [],
-          });
-        }
-        return null;
-      };
-
-      // 点击选中的超边（轮廓或连线）→ { key, members, item }；null 表示未选中
-      const selectionOf = (e, data) => {
-        if (e.targetType === BUBBLE_SETS_TARGET) {
-          const { key, edge = {}, members } = e.target.options || {};
-          const list = Array.isArray(members) ? members : [];
-          return { key, members: list, item: { ...edge, members: list } };
-        }
-        if (e.targetType === "edge") {
-          const edge = data?.data.edges.find((d) => d.id === e.target.id);
-          if (!edge) return null;
-          const { source, target, ...rest } = edge;
-          return {
-            key: edge.id,
-            members: [source, target],
-            item: { ...rest, members: [source, target] },
-          };
-        }
-        return null;
-      };
-
-      // 高亮选中的超边及其成员实体，其余实体、连线、超边轮廓变淡；selection 为 null 时全部恢复
-      const applySelection = (graph, data, selection) => {
-        const members = new Set(selection?.members || []);
-        const states = {};
-        data.data.nodes.forEach((n) => {
-          states[n.id] = !selection ? [] : members.has(n.id) ? ["highlight"] : ["inactive"];
-        });
-        data.data.edges.forEach((d) => {
-          states[d.id] = !selection ? [] : d.id === selection.key ? ["highlight"] : ["inactive"];
-        });
-        graph.setElementState(states, false);
-        graph.setPlugins((plugins) =>
-          plugins.map((p) =>
-            p.type !== HOVER_BUBBLE_SETS
-              ? p
-              : {
-                  ...p,
-                  ...(!selection
-                    ? BUBBLE_NORMAL
-                    : p.key === selection.key
-                    ? BUBBLE_HIGHLIGHT
-                    : BUBBLE_DIMMED),
-                }
-          )
-        );
+        };
       };
 
       function HypergraphViewer() {
         const containerRef = useRef(null);
-        const graphRef = useRef(null);
+        const viewRef = useRef(null);
         const searchTimeoutRef = useRef(null);
 
         const [databaseInfo, setDatabaseInfo] = useState({
@@ -644,7 +397,7 @@
 
         // Generate entity type color mapping
         const entityTypeColors = useMemo(() => {
-          return generateEntityTypeColors(vertices);
+          return typeColorsOf(vertices);
         }, [vertices]);
 
         // Load database info
@@ -739,280 +492,67 @@
           }
         }, [selectedVertex]);
 
-        // Convert data to G6 Graph format
-        const graphDataFormatted = useMemo(() => {
-          if (!graphData) return null;
+        // 超边 key 为用 |#| 拼接的成员，转为 hypergraph-viz 的输入格式
+        const hypergraph = useMemo(() => graphData && fromKeyedEdges(graphData), [graphData]);
 
-          const hyperData = {
-            nodes: Object.entries(graphData.vertices).map(([key, value]) => ({
-              id: key,
-              label: key,
-              ...value,
-            })),
-            edges: [],
-            hyperEdges: [],
-          };
-          const plugins = [];
-          const edgeEntries = Object.entries(graphData.edges);
+        // 图模式只画 2 个顶点的超边，按顶点对去重后的连线数
+        const lineCount = useMemo(() => {
+          if (!hypergraph) return 0;
+          const pairs = hypergraph.hyperedges.filter((he) => new Set(he.members).size === 2);
+          return new Set(pairs.map((he) => pairId(...new Set(he.members)))).size;
+        }, [hypergraph]);
 
-          if (visualizationMode === "graph") {
-            // Graph mode: only show dimension 2 ball-and-stick diagram
-            const edgeSet = new Set();
-
-            edgeEntries.forEach(([key, edge]) => {
-              const nodes = key.split(EDGE_SEPARATOR);
-              if (nodes.length !== 2) return;
-
-              const [a, b] = nodes;
-              const edgeId = a < b ? `${a}-${b}` : `${b}-${a}`;
-
-              if (!edgeSet.has(edgeId)) {
-                edgeSet.add(edgeId);
-                hyperData.edges.push({
-                  id: edgeId,
-                  source: a,
-                  target: b,
-                  ...edge,
-                });
-              }
-            });
-
-            // Filter unconnected nodes
-            const connectedNodes = new Set();
-            hyperData.edges.forEach((edge) => {
-              connectedNodes.add(edge.source);
-              connectedNodes.add(edge.target);
-            });
-            hyperData.nodes = hyperData.nodes.filter((node) =>
-              connectedNodes.has(node.id)
-            );
-          } else {
-            // Hyper mode: render 2-node entries as normal edges, others as bubble-sets
-            const edgeSet = new Set();
-            edgeEntries.forEach(([key, edge], i) => {
-              const nodes = key.split(EDGE_SEPARATOR);
-
-              if (nodes.length === 2) {
-                const [a, b] = nodes;
-                const edgeId = a < b ? `${a}-${b}` : `${b}-${a}`;
-                if (!edgeSet.has(edgeId)) {
-                  edgeSet.add(edgeId);
-                  hyperData.edges.push({
-                    id: edgeId,
-                    source: a,
-                    target: b,
-                    ...edge,
-                  });
-                }
-                return;
-              }
-
-              plugins.push({
-                key: `bubble-sets-${key}`,
-                type: HOVER_BUBBLE_SETS,
-                members: nodes,
-                // 只圈节点，不包裹标签
-                memberBoundsType: "key",
-                weight: edge.weight || nodes.length,
-                description: edge.description || edge.summary || "",
-                edge: edge,
-                ...createBubbleStyle(COLORS[i % COLORS.length]),
-              });
-
-              hyperData.hyperEdges.push({
-                id: key,
-                ...edge,
-                members: nodes,
-              });
-            });
-
-            // Assign cluster by hyperEdges for layout grouping
-            // Pick the heaviest hyperedge containing the node as its primary cluster
-            const nodeIdToCandidateClusters = new Map();
-            hyperData.hyperEdges.forEach((he) => {
-              const weight =
-                he.weight ||
-                (Array.isArray(he.members) ? he.members.length : 1);
-              (he.members || []).forEach((m) => {
-                const list = nodeIdToCandidateClusters.get(m) || [];
-                list.push({ id: he.id, weight });
-                nodeIdToCandidateClusters.set(m, list);
-              });
-            });
-            hyperData.nodes = hyperData.nodes.map((n) => {
-              const candidates = nodeIdToCandidateClusters.get(n.id) || [];
-              if (candidates.length === 0) return n;
-              const primary = candidates.reduce((best, cur) =>
-                cur.weight > best.weight ? cur : best
-              );
-              return { ...n, cluster: primary.id };
-            });
-          }
-
-          const isGraph = visualizationMode === "graph";
-
-          return {
-            data: hyperData,
-            plugins: isGraph ? [] : plugins,
-            node: {
-              palette: { field: "cluster" },
-              style: {
-                size: hyperData.nodes.length > LAYOUT_THRESHOLD ? 15 : 20,
-                labelText: (d) => d.id,
-                fill: (d) => getNodeColor(d, selectedVertex, entityTypeColors),
-                // 显式写出被状态覆盖的样式：G6 移除状态时只回到这里的值，不写就会保留状态样式
-                opacity: 1,
-                lineWidth: 0,
-                labelFontWeight: "normal",
-              },
-              // 点击超边高亮：成员实体 highlight，其余 inactive
-              state: {
-                highlight: { stroke: "#6d28d9", lineWidth: 3, labelFontWeight: "bold" },
-                inactive: { opacity: 0.15 },
-              },
-            },
-            edge: {
-              style: {
-                size: isGraph ? 3 : 2,
-                stroke: "#a68fff",
-                lineWidth: 1,
-                opacity: 1,
-              },
-              state: {
-                highlight: { stroke: "#6d28d9", lineWidth: 3 },
-                inactive: { opacity: 0.1 },
-              },
-            },
-            layout: isGraph
-              ? {
-                  type: "force",
-                  preventOverlap: true,
-                  gravity: 50,
-                  linkDistance: 50,
-                }
-              : !HAS_HYPERGRAPH_LAYOUT
-              ? {
-                  type: "force",
-                  clustering: true,
-                  preventOverlap: true,
-                  nodeClusterBy: "cluster",
-                  gravity: 50,
-                  linkDistance: 50,
-                }
-              : {
-                  // 超图布局：同一超边的实体挨在一起；2 元超边（连线）也参与。以选中实体为中心呈花瓣状排布
-                  type: "hypergraph",
-                  hyperedges: hyperData.hyperEdges,
-                  centerNode: hyperData.nodes.some((n) => n.id === selectedVertex) ? selectedVertex : undefined,
-                  nodeSpacing: 50,
-                  // 标签互不重叠：与节点样式的 labelText、默认字号 12 一致
-                  preventLabelOverlap: true,
-                  labelText: (d) => d.id,
-                  labelFontSize: 12,
-                },
-            autoFit: "center",
-          };
-        }, [graphData, selectedVertex, visualizationMode, entityTypeColors]);
-
-        // Initialize graph
-        useEffect(() => {
-          if (!graphDataFormatted || !containerRef.current) return;
-
-          const graph = new Graph({
-            container: containerRef.current,
-            width: containerRef.current.offsetWidth,
-            height: containerRef.current.offsetHeight || 800,
-            data: graphDataFormatted.data,
-            behaviors: ["zoom-canvas", "drag-canvas", "drag-element"],
-            autoFit: "center",
-            animation: false,
-            node: graphDataFormatted.node,
-            edge: graphDataFormatted.edge,
-            layout: graphDataFormatted.layout,
-            plugins: graphDataFormatted.plugins,
-          });
-
-          graphRef.current = graph;
-          // 实例在布局迭代中被销毁（换数据）时 render 会 reject
-          graph.render().catch(() => {});
-
+        // 视图只创建一次，数据、模式、中心实体变化时复用实例重新布局；悬停 / 点击回调经 ref 读取最新的 setState
+        const handlersRef = useRef(null);
+        handlersRef.current = {
           // 点击超边：选中并高亮；再点同一条或点空白处取消
-          graph.on("click", (e) => {
-            if (e.targetType === "node") return;
-            const next = selectionOf(e, graphDataFormatted);
-            const selection =
-              next && next.key !== selectedRef.current?.key ? next : null;
-            selectedRef.current = selection;
-            applySelection(graph, graphDataFormatted, selection);
-            if (selection) setHoverHyperedge(selection.item);
-          });
-
-          graph.on("pointermove", (e) => {
-            if (e.targetType === BUBBLE_SETS_TARGET && !selectedRef.current) {
-              const target = e.target.options;
-              const newHyperedge = {
-                ...target.edge,
-                members: Array.isArray(target.members) ? target.members : [],
-              };
-              setHoverHyperedge((prev) => {
-                if (
-                  !prev ||
-                  prev.keywords !== newHyperedge.keywords ||
-                  prev.summary !== newHyperedge.summary ||
-                  prev.weight !== newHyperedge.weight ||
-                  JSON.stringify(prev.members) !==
-                    JSON.stringify(newHyperedge.members)
-                ) {
-                  return newHyperedge;
-                }
-                return prev;
-              });
+          onSelect: (hit) => {
+            selectedRef.current = hit;
+            if (hit) setHoverHyperedge(hit.item);
+          },
+          onHover: (hit) => {
+            if (hit?.kind === "hyperedge" && !selectedRef.current) {
+              setHoverHyperedge((prev) => (prev?.id === hit.item.id ? prev : hit.item));
             }
-            if (e.targetType === "node") {
-              const target = graphDataFormatted.data.nodes.find(
-                (node) => node.id === e.target.id
-              );
-              setHoverNode((prev) => {
-                if (!prev || prev.id !== target?.id) {
-                  return target;
-                }
-                return prev;
-              });
+            if (hit?.kind === "node") {
+              setHoverNode((prev) => (prev?.id === hit.item.id ? prev : hit.item));
             }
-
             // 侧边栏保留最后悬停的超边 / 顶点；悬停卡片只在指针位于元素上时显示
-            const next = e.client ? tipOf(e, graphDataFormatted) : null;
-            setTip(next ? { ...next, x: e.client.x, y: e.client.y } : null);
+            setTip(hit ? { ...tipOf(hit), x: hit.client.x, y: hit.client.y } : null);
+          },
+        };
+
+        useEffect(() => {
+          const view = createHypergraphView(containerRef.current, {
+            fallbackHeight: 800,
+            onHover: (hit) => handlersRef.current.onHover(hit),
+            onSelect: (hit) => handlersRef.current.onSelect(hit),
           });
-
-          // Add window resize listener
-          const handleResize = () => {
-            if (graphRef.current && !graphRef.current.destroyed && containerRef.current) {
-              graphRef.current.setSize(
-                containerRef.current.offsetWidth,
-                containerRef.current.offsetHeight
-              );
-            }
-          };
-
-          window.addEventListener("resize", handleResize);
-
+          viewRef.current = view;
           return () => {
-            window.removeEventListener("resize", handleResize);
-            // 销毁而不是 clear：clear 后力导布局仍在迭代，会更新已不存在的节点而报错
-            graphRef.current = null;
-            destroyGraph(graph);
-            setHoverHyperedge(null);
-            setTip(null);
-            selectedRef.current = null;
+            viewRef.current = null;
+            view.destroy();
           };
-        }, [graphDataFormatted, visualizationMode]);
+        }, []);
+
+        useEffect(() => {
+          if (!hypergraph) return;
+          viewRef.current.update({
+            data: hypergraph,
+            mode: visualizationMode,
+            centerNode: selectedVertex,
+            typeColors: entityTypeColors,
+          });
+          setHoverHyperedge(null);
+          setTip(null);
+          selectedRef.current = null;
+        }, [hypergraph, visualizationMode, selectedVertex, entityTypeColors]);
 
         // Select the "largest" node and hyperedges by default
         useEffect(() => {
-          if (!graphDataFormatted) return;
+          if (!hypergraph) return;
 
-          const nodes = graphDataFormatted.data.nodes;
+          const nodes = Object.entries(hypergraph.vertices).map(([id, v]) => ({ ...v, id, label: id }));
           if (!hoverNode && nodes.length > 0) {
             const nodeWithMax = nodes.reduce((best, cur) =>
               (cur.degree || 0) > (best.degree || 0) ? cur : best
@@ -1021,7 +561,7 @@
           }
 
           if (visualizationMode === "hyper") {
-            const hyperEdges = graphDataFormatted.data.hyperEdges;
+            const hyperEdges = hypergraph.hyperedges.filter((he) => new Set(he.members).size > 2);
             if (!hoverHyperedge && hyperEdges.length > 0) {
               const getWeight = (edge) =>
                 edge.weight || edge.members?.length || 0;
@@ -1038,7 +578,7 @@
               });
             }
           }
-        }, [graphDataFormatted, visualizationMode, hoverNode, hoverHyperedge]);
+        }, [hypergraph, visualizationMode, hoverNode, hoverHyperedge]);
 
         return (
           <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -1270,7 +810,7 @@
                     </span>{" "}
                     {visualizationMode === "hyper"
                       ? Object.keys(graphData.edges).length
-                      : graphDataFormatted?.data?.edges?.length || 0}
+                      : lineCount}
                   </div>
                 )}
                   <div
@@ -1320,11 +860,7 @@
                 )}
 
                 <div className="flex h-[calc(100vh-71px)]">
-                  <div
-                    ref={containerRef}
-                    className="w-full rounded-xl h-full"
-                    onMouseLeave={() => setTip(null)}
-                  />
+                  <div ref={containerRef} className="w-full rounded-xl h-full" />
                   {tip && (
                     <HoverTip
                       title={tip.title}
