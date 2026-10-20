@@ -190,3 +190,27 @@ def test_labels(tmp_path):
         assert call(admin, "/api/admin/info")[1]["labels"] == explicit
     finally:
         admin.stop_server()
+
+
+def test_viewer_vertices_sorted_by_degree_and_id(tmp_path):
+    # 查看器左栏的实体列表：按度数、ID 排序，度数高的实体不再被排到最后
+    db = HypergraphDB(storage_file=tmp_path / "hub.hgdb")
+    db.add_v("hub", {})
+    for i in range(60):
+        db.add_v(f"v{i:02d}", {})
+        db.add_e(("hub", f"v{i:02d}"), {})
+    db.add_e(("v00", "v01"), {})
+    admin = HypergraphAdmin(db, port=0)
+    admin.start_server(open_browser=False)
+    try:
+        def ids(sort_by, sort_order):
+            url = f"{admin.url}/api/vertices?page_size=100&sort_by={sort_by}&sort_order={sort_order}"
+            with urllib.request.urlopen(url) as res:
+                return [v["id"] for v in json.loads(res.read())["data"]]
+
+        assert ids("degree", "desc")[:3] == ["hub", "v00", "v01"]
+        assert ids("degree", "asc")[-1] == "hub"
+        assert ids("id", "asc")[0] == "hub"
+        assert ids("id", "desc")[0] == "v59"
+    finally:
+        admin.stop_server()
