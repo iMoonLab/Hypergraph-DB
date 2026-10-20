@@ -1,4 +1,5 @@
 import json
+import re
 import urllib.error
 import urllib.request
 
@@ -40,11 +41,13 @@ def test_pages_served(server):
         assert b"Hypergraph Visualization" in res.read()
 
 
-def test_hypergraph_viz_served(server):
-    # 查看器页面通过 <script src="hypergraph-viz.global.js"> 加载超图渲染，/viewer 与 / 下都解析到同一路径
-    with urllib.request.urlopen(server.url + "/hypergraph-viz.global.js") as res:
-        assert res.headers["Content-Type"].startswith("application/javascript")
-        assert "var HypergraphViz = " in res.read().decode("utf-8")
+@pytest.mark.parametrize("path", ["/", "/viewer"])
+def test_pages_load_hypergraph_viz(server, path):
+    # 管理后台与查看器页面从 unpkg 加载固定版本的 hypergraph-viz（带面板的全局版与样式）
+    with urllib.request.urlopen(server.url + path) as res:
+        html = res.read().decode("utf-8")
+    assert re.search(r"unpkg\.com/hypergraph-viz@\d+\.\d+\.\d+/dist/hypergraph-viz\.explorer\.global\.js", html)
+    assert re.search(r"unpkg\.com/hypergraph-viz@\d+\.\d+\.\d+/dist/style\.css", html)
 
 
 def test_info_and_stats(server):

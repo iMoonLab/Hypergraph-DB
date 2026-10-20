@@ -40,11 +40,6 @@ class HypergraphAPIHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(self._get_html_template().encode("utf-8"))
 
-        elif path == "/hypergraph-viz.global.js":
-            self.send_header("Content-type", "application/javascript; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(self._read_static("hypergraph-viz.global.js"))
-
         elif path == "/api/database/info":
             self.send_header("Content-type", "application/json; charset=utf-8")
             self.end_headers()
@@ -209,10 +204,6 @@ class HypergraphAPIHandler(http.server.BaseHTTPRequestHandler):
             vertices_data[v_id] = {**v_data}
 
         return {"vertices": vertices_data, "edges": edges_data}
-
-    def _read_static(self, name: str) -> bytes:
-        """Read a static file shipped in the templates directory"""
-        return (Path(__file__).parent / "templates" / name).read_bytes()
 
     def _get_html_template(self) -> str:
         """Get HTML template without embedded data"""
