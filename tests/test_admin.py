@@ -206,6 +206,7 @@ def test_viewer_vertices_sorted_by_degree_and_id(tmp_path):
     admin = HypergraphAdmin(db, port=0)
     admin.start_server(open_browser=False)
     try:
+
         def ids(sort_by, sort_order):
             url = f"{admin.url}/api/vertices?page_size=100&sort_by={sort_by}&sort_order={sort_order}"
             with urllib.request.urlopen(url) as res:
