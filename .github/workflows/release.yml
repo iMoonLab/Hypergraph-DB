@@ -43,9 +43,7 @@ jobs:
       run: uv build
     
     - name: Verify package
-      run: |
-        uv run pip install twine
-        uv run twine check dist/*
+      run: uvx twine check dist/*
         
     - name: Create package archive
       run: |
