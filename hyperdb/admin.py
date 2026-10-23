@@ -46,13 +46,41 @@ def _preview(data: Any, limit: int = 120) -> str:
     return text if len(text) <= limit else text[:limit] + "..."
 
 
+def labels_file(storage_file: Any) -> Path:
+    """Default location of the display-label mapping: ``<name>.labels.json`` next to the ``.hgdb`` file."""
+    return Path(storage_file).with_suffix(".labels.json")
+
+
+def load_labels(storage_file: Any, labels: Any = None) -> Dict[str, Any]:
+    """Display labels for attribute values and keys, per language.
+
+    Shape: ``{"zh": {"entity_type": {...}, "edge_type": {...}, "key": {...}}, "en": {...}}``,
+    where ``edge_type`` maps the ``type`` attribute of hyperedges and ``key`` maps attribute names.
+    ``labels`` may be such a dict or a path to a JSON file; when omitted, ``<name>.labels.json``
+    next to the storage file is used if it exists. Labels only change what the console shows.
+    """
+    if isinstance(labels, dict):
+        return labels
+    path = Path(labels) if labels is not None else labels_file(storage_file)
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        print(f"⚠️  Ignoring label file {path}: {e}")
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 class AdminState:
     """Mutable state shared across requests (the handler is re-created for every request)."""
 
-    def __init__(self, hypergraph_db: BaseHypergraphDB):
+    def __init__(self, hypergraph_db: BaseHypergraphDB, labels: Any = None):
         self.hypergraph_db = hypergraph_db
         self.dirty = False
         self.last_saved: Optional[float] = None
+        # Explicit labels win; otherwise the label file is re-read on every /info so edits show on reload
+        self.labels = labels
 
 
 class HypergraphAdminHandler(HypergraphAPIHandler):
@@ -237,6 +265,7 @@ class HypergraphAdminHandler(HypergraphAPIHandler):
             "num_e": hg.num_e,
             "dirty": self.state.dirty,
             "last_saved": self.state.last_saved,
+            "labels": load_labels(hg.storage_file, self.state.labels),
         }
 
     def _stats(self) -> Dict[str, Any]:
@@ -246,15 +275,18 @@ class HypergraphAdminHandler(HypergraphAPIHandler):
         v_keys: Counter = Counter()
         e_keys: Counter = Counter()
         types: Counter = Counter()
+        e_types: Counter = Counter()
         for v in hg.all_v:
             data = hg.v(v, {}) or {}
             v_keys.update(data.keys())
             if data.get("entity_type"):
                 types[str(data["entity_type"])] += 1
         for e in hg.all_e:
-            e_keys.update((hg.e(e, {}) or {}).keys())
+            data = hg.e(e, {}) or {}
+            e_keys.update(data.keys())
+            if data.get("type"):
+                e_types[str(data["type"])] += 1
 
-        top = sorted(hg.all_v, key=lambda v: hg.degree_v(v), reverse=True)[:10]
         return {
             "num_v": hg.num_v,
             "num_e": hg.num_e,
@@ -266,9 +298,9 @@ class HypergraphAdminHandler(HypergraphAPIHandler):
             "degree_hist": sorted(Counter(degrees).items()),
             "edge_size_hist": sorted(Counter(sizes).items()),
             "entity_types": types.most_common(12),
+            "edge_types": e_types.most_common(12),
             "vertex_keys": v_keys.most_common(20),
             "edge_keys": e_keys.most_common(20),
-            "top_vertices": [{"id": _json_safe(v), "degree": hg.degree_v(v)} for v in top],
         }
 
     def _list_vertices(self, params: Dict[str, str]) -> Dict[str, Any]:
@@ -307,6 +339,7 @@ class HypergraphAdminHandler(HypergraphAPIHandler):
         hg = self.hypergraph_db
         search = params.get("search", "").strip().lower()
         vertex = params.get("vertex")
+        edge_type = params.get("edge_type", "")
         sort_by = params.get("sort_by", "size")
         desc = params.get("sort_order", "desc") == "desc"
 
@@ -315,6 +348,8 @@ class HypergraphAdminHandler(HypergraphAPIHandler):
             edges = hg.nbr_e_of_v(self._resolve_v(json.loads(vertex)))
         rows = []
         for e in edges:
+            if edge_type and str((hg.e(e, {}) or {}).get("type", "")) != edge_type:
+                continue
             if search:
                 haystack = " ".join(str(v) for v in e) + " " + _preview(hg.e(e, {}), 10**9)
                 if search not in haystack.lower():
@@ -440,11 +475,11 @@ class _AdminTCPServer(socketserver.TCPServer):
 class HypergraphAdmin:
     """Management console server for a hypergraph database."""
 
-    def __init__(self, hypergraph_db: BaseHypergraphDB, host: str = "127.0.0.1", port: int = 8900):
+    def __init__(self, hypergraph_db: BaseHypergraphDB, host: str = "127.0.0.1", port: int = 8900, labels: Any = None):
         self.hypergraph_db = hypergraph_db
         self.host = host
         self.port = port
-        self.state = AdminState(hypergraph_db)
+        self.state = AdminState(hypergraph_db, labels)
         self.httpd: Optional[socketserver.TCPServer] = None
 
     @property
@@ -479,6 +514,7 @@ def run_admin(
     port: int = 8900,
     open_browser: bool = True,
     blocking: bool = True,
+    labels: Any = None,
 ) -> HypergraphAdmin:
     """Start the admin console for ``hypergraph_db``.
 
@@ -489,11 +525,13 @@ def run_admin(
         port: Server port (0 picks a free port)
         open_browser: Whether to open the console in a browser
         blocking: Whether to block until Ctrl+C. If False, returns immediately.
+        labels: Display labels (dict or JSON file path), see :func:`load_labels`.
+            Defaults to ``<name>.labels.json`` next to the storage file.
 
     Returns:
         HypergraphAdmin instance
     """
-    admin = HypergraphAdmin(hypergraph_db, host=host, port=port)
+    admin = HypergraphAdmin(hypergraph_db, host=host, port=port, labels=labels)
     thread = admin.start_server(open_browser=open_browser)
     if not blocking:
         return admin
