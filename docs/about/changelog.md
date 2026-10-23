@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-23
+
+### Added
+- 📄 HIF (Hypergraph Interchange Format) support: `to_hif()`, `save_as_hif()`, `from_hif()`, `load_from_hif()` (#9)
+- 🛠️ Web admin console `hg.admin()` for browsing, searching and editing vertices and hyperedges, with an overview of statistics (#12)
+- 🎨 New viewer built on [hypergraph-viz](https://www.npmjs.com/package/hypergraph-viz): hypergraph layout that keeps hyperedge members together, contours around nodes only, labels without overlap, click to highlight a hyperedge, Chinese / English UI (#13)
+
+### Changed
+- 📦 The viewer and the admin console load hypergraph-viz and G6 from a CDN; the bundled `g6.min.js` is removed (#13)
+
+### Fixed
+- 🐛 `draw()` showed no graph or "Vertex not found" errors when vertex IDs are not strings, e.g. `int` (#10, #11)
+- 🔧 Vertices with degree > 50 are no longer pushed to the end of the vertex list (#13)
+
 ## [0.3.0] - 2025-10-14
 
 ### Added
@@ -108,7 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🔍 `nbr_e_of_v()` - Query adjacent hyperedges of hypervertex
 - 🎨 `draw()` - Visualize hypergraph
 
-[Unreleased]: https://github.com/iMoonLab/Hypergraph-DB/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/iMoonLab/Hypergraph-DB/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/iMoonLab/Hypergraph-DB/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/iMoonLab/Hypergraph-DB/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/iMoonLab/Hypergraph-DB/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/iMoonLab/Hypergraph-DB/compare/v0.1.1...v0.1.2

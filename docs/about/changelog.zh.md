@@ -5,6 +5,20 @@ Hypergraph-DB 项目的所有重要变更都记录在此文件中。
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本控制](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-10-23
+
+### 新增
+- 📄 支持 HIF（Hypergraph Interchange Format）：`to_hif()`、`save_as_hif()`、`from_hif()`、`load_from_hif()`（#9）
+- 🛠️ Web 管理后台 `hg.admin()`：浏览、搜索、编辑顶点和超边，并提供统计概览（#12）
+- 🎨 基于 [hypergraph-viz](https://www.npmjs.com/package/hypergraph-viz) 的新查看器：同一超边的成员聚在一起的超图布局、轮廓只圈节点、标签互不遮挡、点击高亮超边、中英文界面（#13）
+
+### 改进
+- 📦 查看器和管理后台从 CDN 加载 hypergraph-viz 与 G6，移除内置的 `g6.min.js`（#13）
+
+### 修复
+- 🐛 顶点 ID 不是字符串（如 `int`）时 `draw()` 不显示图或报 "Vertex not found"（#10、#11）
+- 🔧 度数大于 50 的顶点不再被排到顶点列表末尾（#13）
+
 ## [0.3.0] - 2025-10-14
 
 ### 新增
